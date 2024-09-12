@@ -28,9 +28,6 @@ venv/
 *.a
 *.so
 
-# Ignore generated PDF reports and assets
-*/reports/assets/*.png
-
 # Ignore everything in the /data folder
 /data/
 
