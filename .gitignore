@@ -30,7 +30,6 @@ venv/
 
 # Ignore generated PDF reports and assets
 */reports/assets/*.png
-*/reports/*.pdf
 
 # Ignore everything in the /data folder
 /data/
