@@ -10,6 +10,7 @@ matplotlib = "^3.9.2"
 seaborn = "^0.13.2"
 fpdf = "^1.7.2"
 pdfminer-six = "^20240706"
+ocrmypdf = "^16.5.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,23 +1,11 @@
+#!/usr/bin/env python3
+
 import os
+import json
+import argparse
 from pdfminer.high_level import extract_text
 from pdfminer.pdfdocument import PDFTextExtractionNotAllowed
 from multiprocessing import Pool, cpu_count
-import sys
-
-# -------------------------------------------------
-# Setup Script Environment
-# -------------------------------------------------
-# Get the absolute directory where this script is located. This ensures that relative paths
-# in the script behave consistently no matter where the script is executed from.
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Change the current working directory to the script's directory. This helps ensure that
-# any relative paths used in the script are based on the script's location, which is more
-# predictable than the environment's working directory.
-os.chdir(script_dir)
-
-# Add the script's directory to the system path to make sure modules in this directory are importable.
-sys.path.append(script_dir)
 
 def is_text_selectable(pdf_path):
     try:
@@ -35,10 +23,22 @@ def is_text_selectable(pdf_path):
         print(f"Error processing {pdf_path}: {e}")
         return (pdf_path, False)
 
-def main(pdf_dir):
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Analyze PDFs for text selectability")
+    parser.add_argument('--input_folder', required=True, help='Path to the folder containing PDFs')
+    parser.add_argument('--output_dir', required=True, help='Directory to save the output files')
+    args = parser.parse_args()
+
+    input_folder = args.input_folder
+    output_dir = args.output_dir
+
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
     pdf_paths = []
     # Collect all PDF file paths
-    for root, _, files in os.walk(pdf_dir):
+    for root, _, files in os.walk(input_folder):
         for file in files:
             if file.lower().endswith('.pdf'):
                 pdf_path = os.path.join(root, file)
@@ -59,22 +59,27 @@ def main(pdf_dir):
         if not is_selectable:
             unselectable_pdfs.append(pdf_path)
 
-    # Write the list of unselectable PDFs to a text file
-    with open('unselectable_pdfs.txt', 'w', encoding='utf-8') as f:
-        for pdf in unselectable_pdfs:
-            f.write(pdf + '\n')
-
     # Calculate the percentage of unselectable PDFs
-    if total_pdfs > 0:
-        percent_unselectable = (len(unselectable_pdfs) / total_pdfs) * 100
-    else:
-        percent_unselectable = 0
+    percentage_unselectable = (len(unselectable_pdfs) / total_pdfs) * 100 if total_pdfs > 0 else 0
+
+    # Prepare metadata dictionary
+    metadata = {
+        'total_pdfs': total_pdfs,
+        'number_unselectable_pdfs': len(unselectable_pdfs),
+        'percentage_unselectable': percentage_unselectable,
+        'unselectable_pdfs': unselectable_pdfs
+    }
+
+    # Write the metadata to a JSON file
+    output_file_path = os.path.join(output_dir, 'meta_data.json')
+    with open(output_file_path, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=4)
 
     # Print the results
     print(f"Total PDFs processed: {total_pdfs}")
     print(f"Number of unselectable PDFs: {len(unselectable_pdfs)}")
-    print(f"Percentage of unselectable PDFs: {percent_unselectable:.2f}%")
+    print(f"Percentage of unselectable PDFs: {percentage_unselectable:.2f}%")
+    print(f"Metadata saved to: {output_file_path}")
 
 if __name__ == "__main__":
-    pdf_directory = '../data'  # Replace with your actual PDF directory path
-    main(pdf_directory)
+    main()

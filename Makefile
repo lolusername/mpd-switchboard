@@ -3,6 +3,11 @@ VENV := $(shell poetry env info --path)
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
+# Variables for input and output directories
+INPUT_FOLDER := ./data  # Update this path as needed
+OUTPUT_DIR := ./reports  # Update this path as needed
+METADATA_FILE := ./reports/meta_data.json
+
 # Group all PHONY targets
 .PHONY: check setup preprocess clean install help
 
@@ -18,10 +23,39 @@ setup: check
 	@echo "Environment setup complete. Use 'poetry shell' to activate."
 
 # Run the pre-processing PDF script
-preprocess: check
-	@echo "Running the PDF pre-processing script..."
-	@poetry run python pre-processing/app.py || { echo "Pre-processing failed"; exit 1; }
+size-check: check
+	@echo "Running the PDF document size analysis script..."
+	@poetry run python pre-processing/doc-size-analysis.py \
+		--input_folder $(INPUT_FOLDER) \
+		--output_dir $(OUTPUT_DIR) || { echo "Pre-processing failed"; exit 1; }
 	@echo "Pre-processing completed successfully"
+
+# Run the OCR check  script
+ocr-check: check
+	@echo "Running the OCR check script..."
+	@poetry run python pre-processing/ocr-check.py \
+		--input_folder $(INPUT_FOLDER) \
+		--output_dir $(OUTPUT_DIR) || { echo "Pre-processing failed"; exit 1; }
+	@echo "OCR analysis completed successfully"
+
+# OCR target
+ocr:
+	@echo "Running OCR on specified PDFs..."
+	@poetry run python pre-processing/run-ocr.py \
+		--metadata_file $(METADATA_FILE) \
+		--output_dir $(OUTPUT_DIR) \
+		--language eng
+	@echo "OCR processing completed."
+
+	
+# OCR target (In-Place Processing)
+ocr-inplace:
+	@echo "Running OCR on specified PDFs (in-place)..."
+	@poetry run python pre-processing/run-ocr.py \
+		--metadata_file $(METADATA_FILE) \
+		--in-place \
+		--language eng
+	@echo "OCR processing completed."
 
 # Clean virtual environment and temporary files
 clean:
@@ -33,15 +67,3 @@ clean:
 install:
 	@echo "Installing dependencies..."
 	@poetry install
-
-
-# Help command to display available tasks
-help:
-	@echo "Available commands:"
-	@echo "  setup           Set up the project (creates Poetry environment and installs dependencies)"
-	@echo "  preprocess      Run the pre-processing step for the PDF reports"
-	@echo "  clean           Clean up the environment and temporary files"
-	@echo "  install         Install dependencies from the pyproject.toml file"
-
-# Default target
-.DEFAULT_GOAL := help
