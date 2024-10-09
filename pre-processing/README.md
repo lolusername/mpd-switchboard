@@ -6,6 +6,35 @@ As part of building a **data dashboard app** for a nonprofit organization, this 
 
 The pre-processing work ensures that we can **organize**, **upload**, and **store** these documents in a way that makes them easily accessible and usable by the nonprofit team and stakeholders. By analyzing the dataset now, we avoid potential technical challenges later, ensuring the app runs smoothly and cost-effectively.
 
+## Scripts and Their Functions
+
+### 1. doc-size-analysis.py
+
+This script analyzes the size distribution of PDF files in a given directory.
+
+Main functions:
+- `get_pdf_size`: Calculates the size of a PDF file in megabytes.
+- `get_pdf_files`: Recursively finds all PDF files in a specified folder.
+- `get_pdf_sizes_concurrently`: Gets the sizes of PDF files concurrently using threading.
+- `generate_combined_chart`: Creates a combined chart (linear and logarithmic) of PDF file sizes.
+- `generate_pdf_report`: Generates a PDF report with file size statistics and the combined chart.
+
+### 2. ocr-check.py
+
+This script checks whether PDFs in a given directory have selectable text or require OCR.
+
+Main functions:
+- `is_text_selectable`: Checks if a PDF has selectable text.
+- `main`: Processes all PDFs in the input folder, checks for text selectability, and generates a metadata JSON file with the results.
+
+### 3. run-ocr.py
+
+This script performs OCR on PDFs that were identified as not having selectable text.
+
+Main functions:
+- `ocr_pdf`: Applies OCR to a single PDF file.
+- `main`: Reads the metadata JSON file, processes the unselectable PDFs with OCR, and optionally replaces the original files.
+
 ## Why Pre-Processing Matters
 
 When dealing with large numbers of documents, such as **reports**, **case studies**, or **legal files**, it is important to understand their size and structure. This helps us:
@@ -28,24 +57,21 @@ In this phase, we focus on the following key tasks:
    
    - We use both **linear** and **logarithmic** charts to show this. The linear chart provides a straightforward view, while the logarithmic chart helps us understand how a few very large files compare to the rest of the dataset.
    
-3. **Generating a Summary Report**:
+3. **Checking for OCR Requirements**:
+   - We analyze each PDF to determine if it has selectable text or requires OCR processing.
+   
+4. **Applying OCR When Necessary**:
+   - For documents identified as needing OCR, we process them to make the text selectable and searchable.
+
+5. **Generating a Summary Report**:
    - We generate a **PDF report** that summarizes the dataset. This report includes:
      - The **total number of files**.
      - The **total size of all the files** combined.
      - The **smallest** and **largest** file sizes.
      - The **median** (middle value) file size, which gives us a sense of what a typical document looks like.
      - The **charts** showing the distribution of file sizes.
+     - Information on the number of files requiring OCR processing.
    - This report can be shared with team members and stakeholders to give them an overview of the dataset.
-
-## How Does This Help Our Nonprofit?
-
-Pre-processing and data exploration help nonprofits by ensuring that their digital assets are managed efficiently. Here’s how:
-
-1. **Cost Management**: By knowing how large the files are, we can make informed decisions about where and how to store them, saving on storage costs while ensuring the files are readily available.
-
-2. **Improved Performance**: Pre-processing ensures that the files load quickly in the data dashboard, enhancing the user experience. Quick access to reports and documents can save time and make the team more productive.
-
-3. **Future-Proofing**: As your organization grows and the number of documents increases, this pre-processing ensures that the system remains efficient and scalable. It helps avoid potential technical issues down the line, keeping the system running smoothly.
 
 ## Summary of the Process
 
@@ -57,6 +83,3 @@ Pre-processing and data exploration help nonprofits by ensuring that their digit
 
 4. **Report**: Finally, we generate a report that summarizes all of this information, giving both the technical team and the nonprofit’s leadership an overview of what the dataset looks like.
 
-## Conclusion
-
-Pre-processing and exploring the dataset is a vital step in preparing for the data dashboard app. It ensures that the system is built on a solid foundation, with careful attention to storage efficiency, accessibility, and scalability. By taking the time to analyze the dataset now, we are ensuring a smoother, faster, and more cost-effective platform for managing your organization’s documents, allowing you to focus on your mission.
