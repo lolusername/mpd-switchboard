@@ -18,7 +18,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VE
 ENV PATH="/root/.local/bin:$PATH"
 
 # Set work directory
-WORKDIR /app
+WORKDIR /app/
 
 # Copy pyproject.toml and poetry.lock
 COPY ../../pyproject.toml poetry.lock* /app/
