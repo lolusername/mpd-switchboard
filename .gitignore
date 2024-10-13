@@ -18,6 +18,7 @@ venv/
 .vscode/
 .idea/
 *.sublime-workspace
+.cursorignore
 
 # Ignore compiled binaries
 *.out
@@ -25,9 +26,11 @@ venv/
 *.a
 *.so
 
-# Ignore everything in the /data folder
-/data/
 
 # Ignore other system-specific or sensitive files
 *.swp
 *.bak
+
+# Ignore the 'data' and 'redacted_data' directories
+data/
+redacted_data/

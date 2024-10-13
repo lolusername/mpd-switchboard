@@ -1,85 +1,160 @@
-# Pre-Processing and Exploration of PDF Document Dataset
+# Pre-Processing Module
 
-## Overview
+The **Pre-Processing** module is an essential component of our PDF management system. It encompasses various scripts and tools designed to prepare PDF documents for subsequent processing tasks such as OCR (Optical Character Recognition) and redaction. This module ensures that all PDFs are standardized, searchable, and free of sensitive information before they proceed to downstream applications.
 
-As part of building a **data dashboard app** for a nonprofit organization, this phase involves **pre-processing** and **exploring** a collection of PDF documents. This step is crucial because it helps us understand the structure and size of the documents in the dataset, allowing us to manage them more efficiently in the app.
+## Table of Contents
 
-The pre-processing work ensures that we can **organize**, **upload**, and **store** these documents in a way that makes them easily accessible and usable by the nonprofit team and stakeholders. By analyzing the dataset now, we avoid potential technical challenges later, ensuring the app runs smoothly and cost-effectively.
+- [Prerequisites](#prerequisites)
+- [Available Makefile Commands](#available-makefile-commands)
+  - [Check Environment](#check-environment)
+  - [Setup Environment](#setup-environment)
+  - [PDF Size Analysis](#pdf-size-analysis)
+  - [OCR Check](#ocr-check)
+  - [Run OCR](#run-ocr)
+    - [Standard OCR](#standard-ocr)
+    - [In-Place OCR](#in-place-ocr)
+  - [Redact PDFs](#redact-pdfs)
+    - [Dry-Run Redaction](#dry-run-redaction)
+    - [Actual Redaction](#actual-redaction)
+  - [Clean Environment](#clean-environment)
+  - [Install Dependencies](#install-dependencies)
+- [Workflow Overview](#workflow-overview)
+- [Logging and Reports](#logging-and-reports)
+- [Troubleshooting](#troubleshooting)
+- [Additional Information](#additional-information)
 
-## Scripts and Their Functions
+## Prerequisites
 
-### 1. doc-size-analysis.py
+Before diving into the pre-processing tasks, ensure that your system meets the following prerequisites:
 
-This script analyzes the size distribution of PDF files in a given directory.
+- **Python 3.7+**: The scripts are written in Python and require Python version 3.7 or higher.
+- **Poetry**: A dependency management and packaging tool for Python. [Install Poetry](https://python-poetry.org/docs/#installation).
+- **pyenv** (Optional but recommended): Helps manage multiple Python versions. [Install pyenv](https://github.com/pyenv/pyenv#installation).
+- **Make**: A build automation tool used to execute Makefile commands. Most Unix-like systems come with Make pre-installed.
 
-Main functions:
-- `get_pdf_size`: Calculates the size of a PDF file in megabytes.
-- `get_pdf_files`: Recursively finds all PDF files in a specified folder.
-- `get_pdf_sizes_concurrently`: Gets the sizes of PDF files concurrently using threading.
-- `generate_combined_chart`: Creates a combined chart (linear and logarithmic) of PDF file sizes.
-- `generate_pdf_report`: Generates a PDF report with file size statistics and the combined chart.
 
-### 2. ocr-check.py
+## Available Makefile Commands
 
-This script checks whether PDFs in a given directory have selectable text or require OCR.
+The Makefile orchestrates various pre-processing tasks. Below are the available commands along with detailed explanations and usage examples.
 
-Main functions:
-- `is_text_selectable`: Checks if a PDF has selectable text.
-- `main`: Processes all PDFs in the input folder, checks for text selectability, and generates a metadata JSON file with the results.
+### Check Environment
 
-### 3. run-ocr.py
+**Command**: `make check`
 
-This script performs OCR on PDFs that were identified as not having selectable text.
+**Description**: Verifies that `pyenv` and `poetry` are installed on your system.
 
-Main functions:
-- `ocr_pdf`: Applies OCR to a single PDF file.
-- `main`: Reads the metadata JSON file, processes the unselectable PDFs with OCR, and optionally replaces the original files.
+**Usage**:
 
-## Why Pre-Processing Matters
+   ```bash
+   make install
+   ```
 
-When dealing with large numbers of documents, such as **reports**, **case studies**, or **legal files**, it is important to understand their size and structure. This helps us:
+**Outcome**: 
+- Runs `poetry install` to install all dependencies.
+- Outputs a confirmation message upon successful installation.
 
-- **Store documents efficiently**: Cloud storage providers, like **AWS**, often have different storage tiers. By understanding the size of the files, we can make better decisions about which storage options to choose, keeping costs down without sacrificing performance.
-  
-- **Ensure quick access**: Knowing the size of the documents means we can ensure that the data dashboard allows users to **quickly retrieve** and view the files, without long delays.
+## Workflow Overview
 
-- **Prepare for future scalability**: As the nonprofit organization grows, the number of documents will likely increase. Pre-processing ensures the system can handle larger datasets in the future.
+1. **Setup the Environment**: Initialize the Python environment with all necessary dependencies.
 
-## What Does Pre-Processing Involve?
+   ```bash
+   make setup
+   ```
 
-In this phase, we focus on the following key tasks:
+2. **Analyze PDF Sizes**: Assess the sizes of all PDFs to identify any that may require special handling.
 
-1. **Analyzing File Sizes**:
-   - We calculate the size of each PDF document in **megabytes (MB)**. This helps us understand how much storage space is required and whether there are any particularly large files that might require special attention.
-   
-2. **Visualizing the Data**:
-   - We create **charts** that show the distribution of file sizes. This allows us to easily see how many small, medium, or large files exist in the dataset.
-   
-   - We use both **linear** and **logarithmic** charts to show this. The linear chart provides a straightforward view, while the logarithmic chart helps us understand how a few very large files compare to the rest of the dataset.
-   
-3. **Checking for OCR Requirements**:
-   - We analyze each PDF to determine if it has selectable text or requires OCR processing.
-   
-4. **Applying OCR When Necessary**:
-   - For documents identified as needing OCR, we process them to make the text selectable and searchable.
+   ```bash
+   make size-check
+   ```
 
-5. **Generating a Summary Report**:
-   - We generate a **PDF report** that summarizes the dataset. This report includes:
-     - The **total number of files**.
-     - The **total size of all the files** combined.
-     - The **smallest** and **largest** file sizes.
-     - The **median** (middle value) file size, which gives us a sense of what a typical document looks like.
-     - The **charts** showing the distribution of file sizes.
-     - Information on the number of files requiring OCR processing.
-   - This report can be shared with team members and stakeholders to give them an overview of the dataset.
+3. **Check for Selectable Text**: Determine which PDFs contain selectable text and which require OCR.
 
-## Summary of the Process
+   ```bash
+   make ocr-check
+   ```
 
-1. **Collect**: We first collect all the PDFs from your document archive and prepare them for analysis.
-   
-2. **Analyze**: We analyze each document’s size, creating a full picture of the dataset’s structure.
+4. **Perform OCR**: Convert non-selectable PDFs into searchable text. Choose between standard OCR or in-place OCR based on your needs.
 
-3. **Visualize**: We produce charts that show how the document sizes are distributed, helping us see if there are any unusual files or patterns.
+   - **Standard OCR**:
 
-4. **Report**: Finally, we generate a report that summarizes all of this information, giving both the technical team and the nonprofit’s leadership an overview of what the dataset looks like.
+     ```bash
+     make ocr
+     ```
 
+   - **In-Place OCR**:
+
+     ```bash
+     make ocr INPLACE=true
+     ```
+
+5. **Redact Sensitive Information**: Remove or obscure sensitive data from PDFs. Start with a dry run to verify the redaction process.
+
+   - **Dry-Run Redaction**:
+
+     ```bash
+     make redact MODE=dry-run
+     ```
+
+   - **Actual Redaction**:
+
+     ```bash
+     make redact
+     ```
+
+6. **Cleanup**: Remove the virtual environment and temporary files when they are no longer needed.
+
+   ```bash
+   make clean
+   ```
+
+## Logging and Reports
+
+- **Sensitive Data Logs**: After running redaction (dry-run or actual), logs are stored in `./reports/sensitive_data_log.txt`. These logs provide details on the sensitive items detected and redacted.
+
+- **PDF Size Analysis Reports**: Results from the PDF size analysis are saved in the `./reports` directory as generated by `doc-size-analysis.py`.
+
+- **OCR Metadata**: The `ocr-check.py` script generates a `meta_data.json` file in the `./reports` directory, listing PDFs that require OCR.
+
+## Troubleshooting
+
+- **Poetry Not Installed**: If you encounter an error related to Poetry not being installed, ensure that you've followed the [Poetry installation guide](https://python-poetry.org/docs/#installation) and that it's added to your system's PATH.
+
+- **Python Version Issues**: Verify that you're using Python 3.7 or higher. You can check your Python version with:
+
+  ```bash
+  python --version
+  ```
+
+- **Missing Dependencies**: If a script fails due to missing packages, try reinstalling dependencies:
+
+  ```bash
+  make install
+  ```
+
+- **Permission Errors**: Ensure that you have the necessary read/write permissions for the `./data` and `./reports` directories.
+
+- **Log Files Not Found**: If log files are missing after running a command, ensure that the `./reports` directory exists and that the scripts have successfully executed. You can manually create the directory if needed:
+
+  ```bash
+  mkdir -p ./reports
+  ```
+
+## Additional Information
+
+- **Extending Functionality**: The pre-processing module is designed to be extensible. You can add new scripts or modify existing ones to handle additional preprocessing tasks as required.
+
+- **Customizing Makefile Variables**: If your input or output directories differ from the defaults (`./data` and `./reports`), you can override them by setting environment variables when running Make commands. For example:
+
+  ```bash
+  make size-check INPUT_FOLDER=./new_data OUTPUT_DIR=./new_reports
+  ```
+
+- **Parallel Processing**: The redaction script utilizes multiprocessing to handle multiple PDFs simultaneously, leveraging all available CPU cores for efficiency.
+
+- **SpaCy Model**: The `redact.py` script uses SpaCy's `en_core_web_sm` model for Named Entity Recognition (NER). If not already installed, the script will automatically download it. Ensure you have an active internet connection during the first run.
+
+- **Error Handling**: All scripts include robust error handling and logging to facilitate easy debugging and maintenance.
+
+---
+
+For further assistance or to contribute to the project, please contact [your-email@example.com] or open an issue on the repository.

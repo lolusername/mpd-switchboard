@@ -4,12 +4,12 @@ PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
 # Variables for input and output directories
-INPUT_FOLDER := ./data  # Update this path as needed
-OUTPUT_DIR := ./reports  # Update this path as needed
+INPUT_FOLDER := ./data        # Update this path as needed
+OUTPUT_DIR := ./reports       # Update this path as needed
 METADATA_FILE := ./reports/meta_data.json
 
 # Group all PHONY targets
-.PHONY: check setup preprocess clean install help
+.PHONY: check setup preprocess clean install help redact ocr
 
 # Ensure pyenv and poetry are available
 check:
@@ -30,32 +30,48 @@ size-check: check
 		--output_dir $(OUTPUT_DIR) || { echo "Pre-processing failed"; exit 1; }
 	@echo "Pre-processing completed successfully"
 
-# Run the OCR check  script
+# Run the OCR check script
 ocr-check: check
 	@echo "Running the OCR check script..."
 	@poetry run python pre-processing/ocr-check.py \
 		--input_folder $(INPUT_FOLDER) \
-		--output_dir $(OUTPUT_DIR) || { echo "Pre-processing failed"; exit 1; }
+		--output_dir $(OUTPUT_DIR) || { echo "OCR check failed"; exit 1; }
 	@echo "OCR analysis completed successfully"
 
-# OCR target
+# OCR target with parameter for in-place processing
 ocr:
 	@echo "Running OCR on specified PDFs..."
-	@poetry run python pre-processing/run-ocr.py \
-		--metadata_file $(METADATA_FILE) \
-		--output_dir $(OUTPUT_DIR) \
-		--language eng
-	@echo "OCR processing completed."
+	@if [ "$(INPLACE)" = "true" ]; then \
+		poetry run python pre-processing/run-ocr.py \
+			--metadata_file $(METADATA_FILE) \
+			--in-place \
+			--language eng || { echo "OCR processing failed"; exit 1; }; \
+		echo "OCR processing completed (in-place)."; \
+	else \
+		poetry run python pre-processing/run-ocr.py \
+			--metadata_file $(METADATA_FILE) \
+			--output_dir $(OUTPUT_DIR) \
+			--language eng || { echo "OCR processing failed"; exit 1; }; \
+		echo "OCR processing completed."; \
+	fi
 
-	
-# OCR target (In-Place Processing)
-ocr-inplace:
-	@echo "Running OCR on specified PDFs (in-place)..."
-	@poetry run python pre-processing/run-ocr.py \
-		--metadata_file $(METADATA_FILE) \
-		--in-place \
-		--language eng
-	@echo "OCR processing completed."
+# Redact PDFs with parameter for dry run
+redact:
+	@echo "Running PDF redaction..."
+	@if [ "$(MODE)" = "dry-run" ]; then \
+		poetry run python pre-processing/redact.py \
+			--input_folder $(INPUT_FOLDER) \
+			--output_folder $(OUTPUT_DIR) \
+			--dry_run \
+			--log_file $(OUTPUT_DIR)/sensitive_data_log.txt || { echo "Dry-run redaction failed"; exit 1; }; \
+		echo "Dry-run redaction completed. Check the log at $(OUTPUT_DIR)/sensitive_data_log.txt"; \
+	else \
+		poetry run python pre-processing/redact.py \
+			--input_folder $(INPUT_FOLDER) \
+			--output_folder $(OUTPUT_DIR) \
+			--log_file $(OUTPUT_DIR)/sensitive_data_log.txt || { echo "Redaction failed"; exit 1; }; \
+		echo "PDF redaction completed. Redacted files are saved to $(OUTPUT_DIR) and logs are available at $(OUTPUT_DIR)/sensitive_data_log.txt"; \
+	fi
 
 # Clean virtual environment and temporary files
 clean:
