@@ -1,20 +1,39 @@
 <template>
-  <div>
-    <h1 class="text-lime-500">PDF Search</h1>
-    <input v-model="searchQuery" @input="handleSearch" placeholder="Search PDFs..." />
-    <ul v-if="searchResults.length">
-      <li v-for="result in searchResults" :key="result.file_url">
-        <!-- <pre>{{ result }}</pre> -->
-        <h3>{{ result.title }}</h3>
-        <p v-if="result.highlights && result.highlights.content">
-          <span v-html="result.highlights.content[0]"></span>
-        </p>
-        <p v-else>{{ result.content ? result.content.substring(0, 200) + '...' : 'No content preview available' }}</p>
-        <a :href="result.file_url" target="_blank">View PDF</a>
-      </li>
-    </ul>
-    <p v-else-if="searchQuery && !isLoading">No results found.</p>
-    <p v-if="isLoading">Searching...</p>
+  <div class="flex h-screen">
+    <!-- Left 1/3 for search and highlights -->
+    <div class="w-1/3 p-4 overflow-y-auto">
+      <h1 class="text-lime-500 text-2xl mb-4">PDF Search</h1>
+      <input
+        v-model="searchQuery"
+        @input="handleSearch"
+        placeholder="Search PDFs..."
+        class="w-full p-2 mb-4 border rounded"
+      />
+      <ul v-if="searchResults.length">
+        <li
+          v-for="result in searchResults"
+          :key="result.file_url"
+          class="mb-4 p-2 border rounded hover:bg-gray-100"
+          @mouseenter="showFullContent(result)"
+          @mouseleave="hideFullContent"
+        >
+          <h3 class="font-bold">{{ result.title }}</h3>
+          <p v-if="result.highlights && result.highlights.content">
+            <span v-html="result.highlights.content[0]"></span>
+          </p>
+          <p v-else>{{ result.content ? result.content.substring(0, 200) + '...' : 'No content preview available' }}</p>
+          <a :href="result.file_url" target="_blank" class="text-blue-500 hover:underline">View PDF</a>
+        </li>
+      </ul>
+      <p v-else-if="searchQuery && !isLoading">No results found.</p>
+      <p v-if="isLoading">Searching...</p>
+    </div>
+
+    <!-- Right 2/3 for full content -->
+    <div class="w-2/3 p-4 bg-gray-100 overflow-y-auto" v-if="selectedResult">
+      <h2 class="text-xl font-bold mb-4">{{ selectedResult.title }}</h2>
+      <div v-html="selectedResult.content"></div>
+    </div>
   </div>
 </template>
 
@@ -26,6 +45,7 @@ const api = useApi()
 const searchQuery = ref('')
 const searchResults = ref([])
 const isLoading = ref(false)
+const selectedResult = ref(null)
 
 const handleSearch = async () => {
   if (searchQuery.value.length < 3) {
@@ -45,6 +65,14 @@ const handleSearch = async () => {
   }
 }
 
+const showFullContent = (result) => {
+  selectedResult.value = result
+}
+
+const hideFullContent = () => {
+  selectedResult.value = null
+}
+
 // Debounce the search to avoid too many API calls
 const debouncedSearch = useDebounce(handleSearch, 300)
 
@@ -61,3 +89,7 @@ function useDebounce(fn: Function, delay: number) {
   }
 }
 </script>
+
+<style scoped>
+/* Add any additional styles here */
+</style>
