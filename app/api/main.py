@@ -2,8 +2,19 @@ from fastapi import FastAPI, HTTPException
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel
 
+
+
 app = FastAPI()
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Initialize Elasticsearch client
 es = Elasticsearch(["http://elasticsearch:9200"])
 
@@ -25,11 +36,22 @@ async def search_pdfs(search_query: SearchQuery):
                         "query": search_query.query,
                         "fields": ["title", "content"]
                     }
+                },
+                "highlight": {
+                    "fields": {
+                        "title": {},
+                        "content": {}
+                    }
                 }
             }
         )
         hits = result['hits']['hits']
-        return [{"title": hit["_source"]["title"], "content": hit["_source"]["content"], "file_url": hit["_source"]["file_url"][:200]} for hit in hits]
+        return [{
+            "title": hit["_source"]["title"],
+            "content": hit["_source"]["content"],
+            "file_url": hit["_source"]["file_url"],
+            "highlights": hit.get("highlight", {})
+        } for hit in hits]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

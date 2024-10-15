@@ -22,6 +22,17 @@ services:
     volumes:
       - /Users/atiliobarreda/Desktop/software/d4bl/switchboard/data  # Mount local PDFs into Docker
 
+  frontend:
+    build:
+      context: ./frontend
+    container_name: nuxt_app
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      - API_BASE_URL=http://api:8000
+
 volumes:
   esdata:
     driver: local
