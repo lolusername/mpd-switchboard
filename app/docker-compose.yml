@@ -9,30 +9,27 @@ services:
     ports:
       - "9200:9200"
     volumes:
-      - esdata:/usr/share/elasticsearch/data
+      - switchboard_data:/usr/share/elasticsearch/data
 
   api:
     build:
       context: ./api
-    container_name: fastapi_app
+      dockerfile: Dockerfile
+    container_name: switchboard_api
     depends_on:
       - elasticsearch
     ports:
       - "8000:8000"
     volumes:
-      - /Users/atiliobarreda/Desktop/software/d4bl/switchboard/data  # Mount local PDFs into Docker
-
-  frontend:
-    build:
-      context: ./frontend
-    container_name: nuxt_app
-    depends_on:
-      - api
-    ports:
-      - "3000:3000"
+      - ../data:/app/pdf_data
     environment:
-      - API_BASE_URL=http://api:8000
+      - PDF_DIRECTORY=/app/pdf_data
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
-  esdata:
-    driver: local
+  switchboard_data:

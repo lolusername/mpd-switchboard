@@ -5,9 +5,7 @@ import logging
 from elasticsearch import Elasticsearch, helpers
 from pdfminer.high_level import extract_text
 from tqdm import tqdm
-from urllib.parse import quote
 from multiprocessing import Pool, cpu_count
-from functools import partial
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -26,7 +24,7 @@ def create_elasticsearch_index(es, index_name):
             "properties": {
                 "title": { "type": "text" },
                 "content": { "type": "text" },
-                "file_url": { "type": "keyword" },
+                "file_path": { "type": "keyword" },
                 "uploaded_at": { "type": "date" }
             }
         }
@@ -35,24 +33,22 @@ def create_elasticsearch_index(es, index_name):
     logging.info(f"Created index '{index_name}'.")
 
 def process_pdf(args):
-    file_path, base_pdf_dir, storage_url = args
+    file_path, base_pdf_dir = args
     relative_path = os.path.relpath(file_path, base_pdf_dir)
-    relative_path_url = relative_path.replace(os.sep, '/')
     
     text = extract_text_from_pdf(file_path)
     if not text.strip():
         return None
     
-    encoded_relative_path = quote(relative_path_url)
     doc = {
-        'title': os.path.splitext(relative_path_url)[0],
+        'title': os.path.splitext(relative_path)[0],
         'content': text,
-        'file_url': f"{storage_url}/{encoded_relative_path}",
+        'file_path': relative_path,
         'uploaded_at': "2024-04-27"  # You may want to modify this
     }
     return doc
 
-def ingest_pdfs(es, index_name, base_pdf_dir, storage_url):
+def ingest_pdfs(es, index_name, base_pdf_dir):
     pdf_files = []
     for root, _, files in os.walk(base_pdf_dir):
         pdf_files.extend([os.path.join(root, f) for f in files if f.lower().endswith('.pdf')])
@@ -60,7 +56,7 @@ def ingest_pdfs(es, index_name, base_pdf_dir, storage_url):
     total_files = len(pdf_files)
     logging.info(f"Found {total_files} PDF files to process.")
 
-    process_args = [(f, base_pdf_dir, storage_url) for f in pdf_files]
+    process_args = [(f, base_pdf_dir) for f in pdf_files]
     
     with Pool(processes=cpu_count()-2) as pool:
         results = list(tqdm(pool.imap(process_pdf, process_args), total=total_files, desc="Processing PDFs"))
@@ -85,7 +81,6 @@ def ingest_pdfs(es, index_name, base_pdf_dir, storage_url):
 def main():
     parser = argparse.ArgumentParser(description="Ingest PDFs into Elasticsearch.")
     parser.add_argument('--pdf_dir', required=True, help='Base directory containing PDF files.')
-    parser.add_argument('--storage_url', required=True, help='Base URL where PDFs are hosted.')
     parser.add_argument('--index', default='pdf_documents', help='Elasticsearch index name.')
     parser.add_argument('--es_host', default='http://localhost:9200', help='Elasticsearch host URL.')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
@@ -107,7 +102,7 @@ def main():
     create_elasticsearch_index(es, args.index)
     
     logging.info(f"Starting PDF ingestion from directory: {args.pdf_dir}")
-    ingest_pdfs(es, args.index, args.pdf_dir, args.storage_url)
+    ingest_pdfs(es, args.index, args.pdf_dir)
     logging.info("Ingestion process completed.")
 
 if __name__ == "__main__":

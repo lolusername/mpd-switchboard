@@ -1,0 +1,14 @@
+services:
+  ingest:
+    build:
+      context: .
+      dockerfile: elasticsearch-init/Dockerfile
+    volumes:
+      - ../data:/app/data
+    command: ["python", "elasticsearch-init/main.py", "--pdf_dir", "/app/data", "--es_host", "http://elasticsearch:9200"]
+    networks:
+      - switchboard_default
+
+networks:
+  switchboard_default:
+    external: true

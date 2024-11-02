@@ -34,3 +34,4 @@ venv/
 # Ignore the 'data' and 'redacted_data' directories
 data/
 redacted_data/
+_app/

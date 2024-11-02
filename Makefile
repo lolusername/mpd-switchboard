@@ -7,9 +7,10 @@ PIP := $(VENV)/bin/pip
 INPUT_FOLDER := ./data        # Update this path as needed
 OUTPUT_DIR := ./reports       # Update this path as needed
 METADATA_FILE := ./reports/meta_data.json
+DF_CORPORA := ./df_corpora    # New variable for the output file
 
 # Group all PHONY targets
-.PHONY: check setup preprocess clean install help redact ocr
+.PHONY: check setup preprocess clean install help redact ocr create-df
 
 # Ensure pyenv and poetry are available
 check:
@@ -83,3 +84,11 @@ clean:
 install:
 	@echo "Installing dependencies..."
 	@poetry install
+
+# New target for creating the DataFrame
+create-df: check
+	@echo "Creating DataFrame from PDF documents..."
+	@poetry run python pre-processing/create_df.py \
+		--input_folder $(INPUT_FOLDER) \
+		--output_file $(DF_CORPORA) || { echo "DataFrame creation failed"; exit 1; }
+	@echo "DataFrame creation completed successfully"

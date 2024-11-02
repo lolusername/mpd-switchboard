@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "switchboard"
+version = "0.1.0"
+description = "API & frontend"
+authors = ["Atilio Barreda II"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+elasticsearch = "^8.15.1"
+pdfminer-six = "^20240706"
+tqdm = "^4.66.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+ingest = "poetry run python elasticsearch-init/main.py"
