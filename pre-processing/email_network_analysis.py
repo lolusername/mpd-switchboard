@@ -1,0 +1,270 @@
+import re
+import pandas as pd
+import networkx as nx
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from collections import Counter, defaultdict
+import os
+import logging
+from pathlib import Path
+from datetime import datetime
+from pdfminer.high_level import extract_text
+from tqdm import tqdm
+from multiprocessing import Pool, cpu_count
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class EmailNetworkAnalyzer:
+    def __init__(self):
+        # More flexible patterns to capture email headers and relationships
+        self.from_pattern = r'(?:From:|From|Sender:).*?(?=To:|Cc:|Subject:|$)'
+        self.to_pattern = r'(?:To:|To).*?(?=From:|Cc:|Subject:|$)'
+        self.cc_pattern = r'(?:Cc:|Cc|Carbon Copy:).*?(?=From:|To:|Subject:|$)'
+        self.email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
+        self.email_network = {}
+        self.email_freq = Counter()
+        
+    def find_pdf_files(self, directory):
+        """Recursively find all PDF files in the directory"""
+        pdf_files = []
+        for root, _, files in os.walk(directory):
+            pdf_files.extend([
+                os.path.join(root, f) 
+                for f in files 
+                if f.lower().endswith('.pdf')
+            ])
+        return pdf_files
+    
+    def extract_text_from_pdf(self, pdf_path):
+        """Extract text from a PDF file"""
+        try:
+            text = extract_text(pdf_path)
+            return text.strip() if text else ""
+        except Exception as e:
+            logger.error(f"Error extracting text from {pdf_path}: {str(e)}")
+            return ""
+    
+    def process_pdf(self, pdf_path):
+        """Process a single PDF file to extract email relationships"""
+        text = self.extract_text_from_pdf(pdf_path)
+        if not text:
+            return None
+        
+        # Debug: Print a sample of the text
+        logger.debug(f"\nProcessing {pdf_path}")
+        logger.debug(f"Sample text: {text[:200]}...")
+        
+        # Find all emails in the document first
+        all_emails = re.findall(self.email_pattern, text)
+        logger.debug(f"Found {len(all_emails)} total emails in document")
+        
+        relationships = []
+        
+        # Try to find structured email headers first
+        from_sections = re.finditer(self.from_pattern, text, re.IGNORECASE | re.MULTILINE)
+        to_sections = re.finditer(self.to_pattern, text, re.IGNORECASE | re.MULTILINE)
+        
+        # Process structured sections
+        for from_match in from_sections:
+            from_text = from_match.group()
+            sender_emails = re.findall(self.email_pattern, from_text)
+            
+            if sender_emails:
+                sender = sender_emails[0]
+                logger.debug(f"Found sender: {sender}")
+                
+                # Look for recipients in nearby To: sections
+                for to_match in to_sections:
+                    to_text = to_match.group()
+                    receiver_emails = re.findall(self.email_pattern, to_text)
+                    
+                    for receiver in receiver_emails:
+                        if receiver != sender:  # Avoid self-loops
+                            relationships.append((sender, receiver))
+                            logger.debug(f"Found relationship: {sender} -> {receiver}")
+        
+        # If no structured relationships found, try to infer from email order
+        if not relationships and len(all_emails) >= 2:
+            logger.debug("No structured relationships found, inferring from email order")
+            # Assume first email is sender and subsequent emails are recipients
+            sender = all_emails[0]
+            for receiver in all_emails[1:]:
+                if receiver != sender:  # Avoid self-loops
+                    relationships.append((sender, receiver))
+                    logger.debug(f"Inferred relationship: {sender} -> {receiver}")
+        
+        if relationships:
+            logger.debug(f"Found {len(relationships)} total relationships")
+        else:
+            logger.debug("No relationships found")
+            
+        return {
+            'path': pdf_path,
+            'relationships': relationships,
+            'total_emails': len(all_emails)
+        }
+    
+    def analyze_directory(self, pdf_dir, test_run=False):
+        """Analyze all PDFs in directory and subdirectories"""
+        logger.info(f"Scanning directory: {pdf_dir}")
+        pdf_files = self.find_pdf_files(pdf_dir)
+        
+        if test_run:
+            pdf_files = pdf_files[:500]
+            logger.info("TEST RUN: Processing only 500 documents")
+        
+        total_files = len(pdf_files)
+        logger.info(f"Processing {total_files} PDF files")
+        
+        # Process PDFs in parallel
+        with Pool(processes=cpu_count()-1) as pool:
+            results = list(tqdm(
+                pool.imap(self.process_pdf, pdf_files),
+                total=total_files,
+                desc="Processing PDFs"
+            ))
+        
+        # Initialize the network dictionary
+        self.email_network = defaultdict(lambda: defaultdict(int))
+        
+        # Track some statistics
+        total_relationships = 0
+        total_emails_found = 0
+        
+        # Analyze email patterns
+        for result in results:
+            if result:
+                total_emails_found += result.get('total_emails', 0)
+                if result['relationships']:
+                    total_relationships += len(result['relationships'])
+                    for sender, receiver in result['relationships']:
+                        self.email_freq.update([sender, receiver])
+                        self.email_network[sender][receiver] += 1
+        
+        logger.info(f"Found {len(self.email_freq)} unique email addresses")
+        logger.info(f"Found {total_relationships} email relationships")
+        logger.info(f"Found {total_emails_found} total email addresses")
+        
+        return dict(self.email_network), dict(self.email_freq)
+
+    def create_network_visualization(self, min_weight=2):
+        """Create summary visualizations of email network patterns"""
+        logger.info("Creating network visualizations...")
+        
+        # Create figure with 2x2 subplots
+        fig = plt.figure(figsize=(15, 15))
+        gs = fig.add_gridspec(2, 2)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, 0])
+        ax4 = fig.add_subplot(gs[1, 1])
+        
+        # Get domain data
+        domains = Counter(email.split('@')[1] for email in self.email_freq.keys())
+        top_domains = domains.most_common(10)  # Top 10 for clarity
+        domain_names = [d[0] for d in top_domains]
+        domain_counts = [d[1] for d in top_domains]
+        
+        # 1. Top Email Domains Bar Chart
+        sns.barplot(data=pd.DataFrame(top_domains, columns=['Domain', 'Count']), 
+                    y='Domain', x='Count', ax=ax1)
+        ax1.set_title('Top 10 Email Domains')
+        
+        # 2. Email Activity Distribution
+        connection_counts = [len(receivers) for receivers in self.email_network.values()]
+        sns.histplot(connection_counts, ax=ax2, bins=30)
+        ax2.set_title('Distribution of Email Connections')
+        ax2.set_xlabel('Number of Connections')
+        
+        # 3. Domain Network Graph
+        G = nx.Graph()
+        
+        # Calculate domain connections
+        domain_matrix = np.zeros((10, 10))
+        for sender, receivers in self.email_network.items():
+            sender_domain = sender.split('@')[1]
+            if sender_domain in domain_names:
+                for receiver, weight in receivers.items():
+                    receiver_domain = receiver.split('@')[1]
+                    if receiver_domain in domain_names:
+                        i = domain_names.index(sender_domain)
+                        j = domain_names.index(receiver_domain)
+                        domain_matrix[i][j] += weight
+        
+        # Add nodes and edges to graph
+        for i, (domain, count) in enumerate(zip(domain_names, domain_counts)):
+            G.add_node(domain, size=count)
+        
+        # Add edges above mean threshold
+        edge_threshold = np.mean(domain_matrix[domain_matrix > 0])
+        for i in range(len(domain_names)):
+            for j in range(i+1, len(domain_names)):
+                weight = domain_matrix[i][j]
+                if weight > edge_threshold:
+                    G.add_edge(domain_names[i], domain_names[j], weight=weight)
+        
+        # Draw network graph
+        pos = nx.spring_layout(G, k=1.5)
+        node_sizes = [G.nodes[node]['size'] * 50 for node in G.nodes()]
+        
+        nx.draw_networkx_nodes(G, pos, ax=ax3, node_size=node_sizes, 
+                              node_color='lightblue', alpha=0.7)
+        
+        edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+        nx.draw_networkx_edges(G, pos, ax=ax3, width=np.array(edge_weights)/max(edge_weights)*3,
+                              alpha=0.4)
+        
+        nx.draw_networkx_labels(G, pos, ax=ax3, font_size=8)
+        ax3.set_title('Domain Communication Network\n(Node size = email volume, Edge thickness = communication frequency)')
+        ax3.axis('off')
+        
+        # 4. Domain Relationship Heatmap
+        # Normalize matrix for better visualization
+        max_value = np.max(domain_matrix)
+        if max_value > 0:
+            domain_matrix = domain_matrix / max_value * 100
+        
+        sns.heatmap(
+            domain_matrix,
+            xticklabels=[d.replace('.gov', '').replace('.com', '') for d in domain_names],
+            yticklabels=[d.replace('.gov', '').replace('.com', '') for d in domain_names],
+            ax=ax4,
+            cmap='YlOrRd',
+            annot=True,
+            fmt='.0f',
+            square=True,
+            cbar_kws={'label': 'Relative Communication Frequency (%)'}
+        )
+        
+        ax4.set_xticklabels(ax4.get_xticklabels(), rotation=45, ha='right')
+        ax4.set_yticklabels(ax4.get_yticklabels(), rotation=0)
+        ax4.set_title('Domain Communication Patterns\n(Top 10 Domains)')
+        ax4.set_xlabel('To Domain')
+        ax4.set_ylabel('From Domain')
+        
+        plt.tight_layout()
+        return fig
+
+    def generate_statistics(self):
+        """Generate email correspondence statistics"""
+        # Extract domains from emails
+        domains = Counter(email.split('@')[1] for email in self.email_freq.keys())
+        
+        # Calculate additional metrics
+        total_connections = sum(len(v) for v in self.email_network.values())
+        avg_connections = total_connections / len(self.email_freq) if self.email_freq else 0
+        
+        stats = {
+            'total_unique_emails': len(self.email_freq),
+            'total_connections': total_connections,
+            'avg_connections_per_email': round(avg_connections, 2),
+            'top_emailers': pd.DataFrame(
+                self.email_freq.most_common(20),
+                columns=['Email', 'Frequency']
+            ),
+            'domain_stats': dict(domains.most_common(20))
+        }
+        return stats

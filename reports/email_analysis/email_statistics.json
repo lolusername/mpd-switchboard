@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "total_unique_emails": 297,
+    "total_connections": 325,
+    "avg_connections": 1.09
+  },
+  "domain_stats": {
+    "dc.gov": 60,
+    "de.gov": 11,
+    "nps.gov": 11,
+    "uscp.gov": 10,
+    "mail.mil": 8,
+    "usss.dhs.gov": 8,
+    "dataminr.com": 6,
+    "ice.dhs.gov": 6,
+    "fps.dhs.gov": 5,
+    "nynjhidta.org": 5,
+    "babelstreet.com": 4,
+    "thomsonreuters.com": 4,
+    "lexisnexis.com": 4,
+    "TLO.com": 4,
+    "saa.senate.gov": 4,
+    "politico.com": 4,
+    "sprinklr.com": 3,
+    "voyager-analytics.com": 3,
+    "state.gov": 3,
+    "protonmail.com": 3
+  }
+}
