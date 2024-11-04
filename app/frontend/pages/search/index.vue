@@ -123,6 +123,15 @@
             </h2>
             <div class="prose max-w-none" v-html="formattedContent"></div>
           </div>
+
+          <!-- Annotation Section -->
+          <div class="mt-8">
+            <h3 class="text-xl font-semibold mb-4">Annotations</h3>
+            <textarea v-model="annotations[selectedResult.file_url]" 
+                      @blur="saveAnnotation(selectedResult.file_url)"
+                      class="w-full p-3 border rounded-md" rows="6"
+                      placeholder="Add your notes here..."></textarea>
+          </div>
         </div>
       </div>
     </div>
@@ -130,7 +139,7 @@
   
   
   <script setup>
-  import { ref, watch, computed } from 'vue'
+  import { ref, watch, computed, onMounted } from 'vue'
   
   // State
   const searchQuery = ref('')
@@ -139,6 +148,8 @@
   const isLoading = ref(false)
   const selectedResult = ref(null)
   const pinnedDocs = ref([])
+  
+  const annotations = ref({})
   
   // Methods
   const handleSearch = async (page = 1) => {
@@ -341,6 +352,17 @@
 
     return formattedSections.filter(Boolean).join('\n')
   })
+  
+  // Load annotations from localStorage
+  onMounted(() => {
+    const savedAnnotations = JSON.parse(localStorage.getItem('annotations') || '{}')
+    annotations.value = savedAnnotations
+  })
+
+  // Save annotation to localStorage
+  const saveAnnotation = (fileUrl) => {
+    localStorage.setItem('annotations', JSON.stringify(annotations.value))
+  }
   </script>
   
   <style>

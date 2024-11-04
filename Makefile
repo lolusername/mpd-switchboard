@@ -8,9 +8,10 @@ INPUT_FOLDER := ./data        # Update this path as needed
 OUTPUT_DIR := ./reports       # Update this path as needed
 METADATA_FILE := ./reports/meta_data.json
 DF_CORPORA := ./df_corpora    # New variable for the output file
+EMAIL_ANALYSIS_DIR := $(OUTPUT_DIR)/email_analysis
 
 # Group all PHONY targets
-.PHONY: check setup preprocess clean install help redact ocr create-df
+.PHONY: check setup preprocess clean install help redact ocr create-df email-analysis
 
 # Ensure pyenv and poetry are available
 check:
@@ -92,3 +93,21 @@ create-df: check
 		--input_folder $(INPUT_FOLDER) \
 		--output_file $(DF_CORPORA) || { echo "DataFrame creation failed"; exit 1; }
 	@echo "DataFrame creation completed successfully"
+
+# Email network analysis target
+email-analysis: check
+	@echo "Running email network analysis on PDF documents..."
+	@mkdir -p ./reports/email_analysis
+	@if [ "$(TEST)" = "true" ]; then \
+		poetry run python3 pre-processing/generate_email_report.py \
+			--pdf_dir ./data \
+			--output_dir ./reports/email_analysis \
+			--verbose \
+			--test-run || { echo "Email network analysis failed"; exit 1; }; \
+	else \
+		poetry run python3 pre-processing/generate_email_report.py \
+			--pdf_dir ./data \
+			--output_dir ./reports/email_analysis \
+			--verbose || { echo "Email network analysis failed"; exit 1; }; \
+	fi
+	@echo "Email network analysis completed. Results saved to ./reports/email_analysis"
