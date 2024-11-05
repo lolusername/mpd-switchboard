@@ -119,12 +119,22 @@ class EmailNetworkAnalyzer:
         total_files = len(pdf_files)
         logger.info(f"Processing {total_files} PDF files")
         
-        # Process PDFs in parallel
-        with Pool(processes=cpu_count()-1) as pool:
+        # Calculate optimal chunk size and number of processes
+        chunk_size = max(1, min(100, total_files // (cpu_count() * 4)))
+        n_processes = min(cpu_count() * 2, total_files)
+        
+        # Process PDFs in parallel with optimized settings
+        with Pool(processes=n_processes) as pool:
+            # Use larger chunks for better efficiency
             results = list(tqdm(
-                pool.imap(self.process_pdf, pdf_files),
+                pool.imap_unordered(
+                    self.process_pdf, 
+                    pdf_files,
+                    chunksize=chunk_size
+                ),
                 total=total_files,
-                desc="Processing PDFs"
+                desc="Processing PDFs",
+                unit="files"
             ))
         
         # Initialize the network dictionary
@@ -198,13 +208,22 @@ class EmailNetworkAnalyzer:
         for i, (domain, count) in enumerate(zip(domain_names, domain_counts)):
             G.add_node(domain, size=count)
         
-        # Add edges above mean threshold
-        edge_threshold = np.mean(domain_matrix[domain_matrix > 0])
-        for i in range(len(domain_names)):
-            for j in range(i+1, len(domain_names)):
-                weight = domain_matrix[i][j]
-                if weight > edge_threshold:
-                    G.add_edge(domain_names[i], domain_names[j], weight=weight)
+        # Add edges with adaptive threshold
+        if domain_matrix.sum() > 0:  # Check if we have any connections
+            # Use a much more lenient threshold - show more connections
+            # Try using 10th percentile instead of 25th, or a small fixed percentage of max value
+            edge_threshold = min(
+                np.percentile(domain_matrix[domain_matrix > 0], .1),  # .1th percentile
+                np.max(domain_matrix) * 0.999  # Or at least show top 99.9% of connections
+            )
+            logger.debug(f"Edge threshold: {edge_threshold}")
+            
+            for i in range(len(domain_names)):
+                for j in range(i+1, len(domain_names)):
+                    weight = domain_matrix[i][j]
+                    if weight > edge_threshold:
+                        G.add_edge(domain_names[i], domain_names[j], weight=weight)
+                        logger.debug(f"Added edge: {domain_names[i]} - {domain_names[j]} (weight: {weight})")
         
         # Draw network graph
         pos = nx.spring_layout(G, k=1.5)
@@ -213,9 +232,14 @@ class EmailNetworkAnalyzer:
         nx.draw_networkx_nodes(G, pos, ax=ax3, node_size=node_sizes, 
                               node_color='lightblue', alpha=0.7)
         
+        # Draw edges only if we have any
         edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
-        nx.draw_networkx_edges(G, pos, ax=ax3, width=np.array(edge_weights)/max(edge_weights)*3,
-                              alpha=0.4)
+        if edge_weights:  # Check if we have any edges
+            nx.draw_networkx_edges(G, pos, ax=ax3, 
+                                 width=np.array(edge_weights)/max(edge_weights)*3,
+                                 alpha=0.4)
+        else:
+            logger.warning("No edges met the threshold criteria for visualization")
         
         nx.draw_networkx_labels(G, pos, ax=ax3, font_size=8)
         ax3.set_title('Domain Communication Network\n(Node size = email volume, Edge thickness = communication frequency)')
