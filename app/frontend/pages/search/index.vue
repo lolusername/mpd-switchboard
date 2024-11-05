@@ -1,141 +1,173 @@
 <template>
-    <div class="flex flex-col h-screen">
-      <!-- Pinned Documents Tabs -->
-      <div v-if="pinnedDocs.length" class="flex bg-gray-100 p-2 border-b">
-        <div
-          v-for="doc in pinnedDocs"
-          :key="doc.file_url"
-          class="mr-2 px-4 py-2 bg-white shadow rounded-t cursor-pointer flex items-center"
-          :class="{ 'bg-indigo-100': doc === selectedResult }"
-          @click="selectPinnedDoc(doc)"
-        >
-          <span class="truncate max-w-[200px] font-medium text-gray-800">{{ doc.title || doc.file_name }}</span>
-          <button @click.stop="unpinDoc(doc)" class="ml-2 text-red-500">&times;</button>
+  <div class="min-h-screen bg-slate-50">
+    <!-- Sidebar -->
+    <div class="fixed left-0 top-0 h-full w-16 bg-white border-r border-gray-100 flex flex-col items-center py-4 space-y-6">
+      <div class="text-red-500 font-bold text-xs tracking-wider">
+        D4BL
+      </div>
+      <NuxtLink to="/" class="p-2 hover:bg-gray-100 rounded-full">
+        <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </NuxtLink>
+      <div class="p-2 bg-gray-100 rounded-full">
+        <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="ml-16 p-8">
+      <!-- Header -->
+      <div class="flex justify-between items-start mb-8">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Search Email Documents</h1>
+          <p class="text-gray-500 mt-1">search across {{ pagination?.total_documents?.toLocaleString() || 'all' }} documents</p>
         </div>
       </div>
-  
-      <div class="flex flex-1 overflow-hidden">
-        <!-- Search Panel -->
-        <div class="w-1/3 p-5 overflow-y-auto bg-white border-r">
-          <h1 class="text-2xl font-semibold text-gray-800 mb-5">PDF Search</h1>
-          
-          <!-- Search Input -->
-          <div class="relative mb-4">
-            <input
-              v-model="searchQuery"
-              placeholder="Search PDFs..."
-              class="w-full p-3 pr-10 border rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-              :disabled="isLoading"
-            />
-            <div v-if="isLoading" class="absolute right-2 top-2">
-              <div class="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+
+      <!-- Search Input -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            placeholder="Search across all email documents..."
+            class="w-full p-4 pr-12 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
+            :disabled="isLoading"
+          />
+          <div class="absolute right-4 top-1/2 -translate-y-1/2">
+            <div v-if="isLoading" class="animate-spin h-5 w-5 border-2 border-red-500 border-t-transparent rounded-full"></div>
+            <svg v-else class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pinned Documents Bar -->
+      <div v-if="pinnedDocs.length" class="bg-white rounded-2xl border border-gray-100 p-4 mb-6 shadow-sm overflow-x-auto">
+        <div class="flex gap-2">
+          <div
+            v-for="doc in pinnedDocs"
+            :key="doc.file_url"
+            class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl cursor-pointer"
+            :class="{ 'bg-red-50 border-2 border-red-500': doc === selectedResult }"
+            @click="selectPinnedDoc(doc)"
+          >
+            <svg class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+            <span class="truncate max-w-[200px] text-sm">{{ doc.title || doc.file_name }}</span>
+            <button 
+              @click.stop="unpinDoc(doc)" 
+              class="text-gray-400 hover:text-red-500"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-6">
+        <!-- Results Panel -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-gray-900">Search Results</h3>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span>
+              <span>{{ searchResults.length }} matches</span>
             </div>
           </div>
-  
-          <!-- Search Stats -->
-          <div v-if="pagination" class="text-sm text-gray-500 mb-4">
-            Found {{ pagination.total_documents.toLocaleString() }} documents
-            <span v-if="pagination.total_pages > 1">
-              (Page {{ pagination.current_page }} of {{ pagination.total_pages }})
-            </span>
-          </div>
-  
+
           <!-- Results List -->
-          <ul v-if="searchResults.length" class="space-y-3">
-            <li
+          <div class="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+            <div
               v-for="result in searchResults"
               :key="result.file_name"
-              class="p-4 bg-gray-50 border border-gray-200 rounded-lg shadow hover:bg-gray-100 transition-colors cursor-pointer"
-              @mouseenter="showFullContent(result)"
+              class="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+              :class="{ 'border-2 border-red-500': selectedResult === result }"
+              @click="showFullContent(result)"
             >
-              <h3 class="text-lg font-medium text-gray-800">{{ result.title || result.file_name }}</h3>
-              
-              <!-- Highlights or Content Preview -->
-              <div class="mt-2 text-sm text-gray-600">
-                <div v-if="result.highlights?.content" class="space-y-1">
-                  <div 
-                    v-for="(highlight, idx) in result.highlights.content" 
-                    :key="idx"
-                    v-html="highlight"
-                    class="bg-yellow-100 p-1 rounded-md"
-                  ></div>
-                </div>
-                <p v-else>
-                  {{ result.content ? result.content.substring(0, 200) + '...' : 'No content preview available' }}
-                </p>
+              <h4 class="font-medium text-gray-900">{{ result.title || result.file_name }}</h4>
+              <div v-if="result.highlights?.content" class="mt-2 space-y-1">
+                <div 
+                  v-for="(highlight, idx) in result.highlights.content" 
+                  :key="idx"
+                  v-html="highlight"
+                  class="text-sm text-gray-600"
+                ></div>
               </div>
-  
-              <!-- Actions and Metadata -->
-              <div class="flex items-center justify-between mt-4 text-sm">
-                <div class="flex items-center space-x-3">
-                  <a 
-                    :href="`/pdf/${result.file_url}`" 
-                    target="_blank" 
-                    class="text-indigo-600 hover:underline"
+              <div class="flex items-center justify-between mt-3 text-xs">
+                <div class="flex items-center gap-3">
+                  <button 
+                    @click.stop="togglePin(result)"
+                    class="flex items-center gap-1 text-gray-500 hover:text-red-500"
                   >
-                    Download PDF
-                  </a>
-                  <label class="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      :checked="isPinned(result)" 
-                      @change="togglePin(result)" 
-                      class="mr-2 text-indigo-600 focus:ring-0"
-                    >
-                    <span>Pin</span>
-                  </label>
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path :d="isPinned(result) ? 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z' : 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z'" 
+                            :fill="isPinned(result) ? 'currentColor' : 'none'"
+                            stroke-width="1.5"/>
+                    </svg>
+                    {{ isPinned(result) ? 'Pinned' : 'Pin' }}
+                  </button>
                 </div>
-                <div class="text-gray-500">
-                  Score: {{ result.score.toFixed(2) }}
-                </div>
+                <span class="text-gray-400">Score: {{ result.score.toFixed(2) }}</span>
               </div>
-            </li>
-          </ul>
-  
-          <!-- Pagination Controls -->
-          <div v-if="pagination && pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div v-if="pagination?.total_pages > 1" class="flex justify-center gap-2 mt-6">
             <button
               v-for="page in getPageNumbers()"
               :key="page"
               @click="changePage(page)"
-              class="px-4 py-2 border rounded shadow-sm focus:outline-none transition-colors"
+              class="px-3 py-1 rounded-md text-sm transition-colors"
               :class="[
                 page === pagination.current_page
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               ]"
             >
               {{ page }}
             </button>
           </div>
-  
-          <!-- No Results Message -->
-          <p v-else-if="searchQuery && !isLoading" class="text-center text-gray-500 mt-8">
-            No results found.
-          </p>
         </div>
-  
-        <!-- Document Viewer -->
-        <div v-if="selectedResult" class="w-2/3 p-6 bg-gray-100 overflow-y-auto">
-          <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-semibold mb-6 text-gray-800">
-              {{ selectedResult.title || selectedResult.file_name }}
-            </h2>
-            <div class="prose max-w-none" v-html="formattedContent"></div>
-          </div>
 
-          <!-- Annotation Section -->
-          <div class="mt-8">
-            <h3 class="text-xl font-semibold mb-4">Annotations</h3>
-            <textarea v-model="annotations[selectedResult.file_url]" 
-                      @blur="saveAnnotation(selectedResult.file_url)"
-                      class="w-full p-3 border rounded-md" rows="6"
-                      placeholder="Add your notes here..."></textarea>
+        <!-- Document Viewer -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div v-if="selectedResult" class="h-full">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-medium text-gray-900">Document View</h3>
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>Selected Document</span>
+              </div>
+            </div>
+            <div class="prose max-w-none max-h-[calc(100vh-400px)] overflow-y-auto">
+              <div v-html="formattedContent"></div>
+            </div>
+            <div class="mt-4">
+              <textarea 
+                v-model="annotations[selectedResult.file_url]"
+                @blur="saveAnnotation(selectedResult.file_url)"
+                class="w-full p-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-red-500 resize-none"
+                rows="4"
+                placeholder="Add notes about this document..."
+              ></textarea>
+            </div>
+          </div>
+          <div v-else class="flex items-center justify-center h-full text-gray-400">
+            Select a document to view its contents
           </div>
         </div>
       </div>
     </div>
-  </template>
+  </div>
+</template>
   
   
   <script setup>
@@ -216,6 +248,7 @@
     } else {
       pinnedDocs.value.push(doc)
       selectedResult.value = doc
+      localStorage.setItem('pinnedDocs', JSON.stringify(pinnedDocs.value))
     }
   }
   
@@ -223,9 +256,10 @@
     const index = pinnedDocs.value.findIndex(pinnedDoc => pinnedDoc.file_url === doc.file_url)
     if (index !== -1) {
       pinnedDocs.value.splice(index, 1)
-      if (selectedResult.value === doc) {
+      if (selectedResult.value?.file_url === doc.file_url) {
         selectedResult.value = pinnedDocs.value[0] || null
       }
+      localStorage.setItem('pinnedDocs', JSON.stringify(pinnedDocs.value))
     }
   }
   
@@ -357,6 +391,9 @@
   onMounted(() => {
     const savedAnnotations = JSON.parse(localStorage.getItem('annotations') || '{}')
     annotations.value = savedAnnotations
+    
+    const savedPinnedDocs = JSON.parse(localStorage.getItem('pinnedDocs') || '[]')
+    pinnedDocs.value = savedPinnedDocs
   })
 
   // Save annotation to localStorage

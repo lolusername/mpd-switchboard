@@ -12,6 +12,8 @@ from datetime import datetime
 from pdfminer.high_level import extract_text
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+import spacy
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +29,28 @@ class EmailNetworkAnalyzer:
         self.email_network = {}
         self.email_freq = Counter()
         
+        # Initialize spaCy with increased max length
+        self.nlp = spacy.load("en_core_web_sm")
+        self.nlp.max_length = 7000000  # Increase max length to 5M characters
+        
+        self.entity_mentions = Counter()
+        self.entity_connections = {}
+        
+        # Add entity normalization mapping
+        self.entity_mapping = {
+            'USA': ['USA', 'U.S.', 'US'],
+            'DC Government': ['the DC Government', 'DC GOVERNMENT/OU', 'DC Gov', 'DC Government'],
+            'Washington DC': ['Washington', 'DC', 'Washington DC'],
+            'OCTO': ['OCTO Security Operations Center', 'OCTO SOC', 'OCTO'],
+            'NCR': ['NCR', 'National Capital Region'],
+        }
+        
+        # Create reverse mapping for quick lookups
+        self.entity_normalize = {}
+        for normalized, variants in self.entity_mapping.items():
+            for variant in variants:
+                self.entity_normalize[variant] = normalized
+
     def find_pdf_files(self, directory):
         """Recursively find all PDF files in the directory"""
         pdf_files = []
@@ -47,17 +71,36 @@ class EmailNetworkAnalyzer:
             logger.error(f"Error extracting text from {pdf_path}: {str(e)}")
             return ""
     
+    def normalize_entity(self, entity):
+        """Normalize entity names to handle variations"""
+        return self.entity_normalize.get(entity, entity)
+    
     def process_pdf(self, pdf_path):
-        """Process a single PDF file to extract email relationships"""
+        """Process a single PDF file to extract email relationships and entities"""
         text = self.extract_text_from_pdf(pdf_path)
         if not text:
             return None
+            
+        # Extract entities using spaCy
+        doc = self.nlp(text)
         
-        # Debug: Print a sample of the text
-        logger.debug(f"\nProcessing {pdf_path}")
-        logger.debug(f"Sample text: {text[:200]}...")
+        # Track entities in this document
+        doc_entities = set()
+        entity_pairs = []  # Store co-occurring pairs instead of updating connections directly
         
-        # Find all emails in the document first
+        for ent in doc.ents:
+            if ent.label_ in ['ORG', 'PERSON', 'GPE']:  # Organizations, People, Locations
+                # Normalize the entity name before adding
+                normalized_entity = self.normalize_entity(ent.text)
+                doc_entities.add(normalized_entity)
+        
+        # Create pairs of co-occurring entities
+        entities_list = list(doc_entities)
+        for i in range(len(entities_list)):
+            for j in range(i + 1, len(entities_list)):
+                entity_pairs.append((entities_list[i], entities_list[j]))
+        
+        # Find all emails in the document
         all_emails = re.findall(self.email_pattern, text)
         logger.debug(f"Found {len(all_emails)} total emails in document")
         
@@ -101,10 +144,13 @@ class EmailNetworkAnalyzer:
         else:
             logger.debug("No relationships found")
             
+        # Return both email and entity data
         return {
             'path': pdf_path,
             'relationships': relationships,
-            'total_emails': len(all_emails)
+            'total_emails': len(all_emails),
+            'entities': list(doc_entities),
+            'entity_pairs': entity_pairs  # Add entity pairs to result
         }
     
     def analyze_directory(self, pdf_dir, test_run=False):
@@ -137,8 +183,9 @@ class EmailNetworkAnalyzer:
                 unit="files"
             ))
         
-        # Initialize the network dictionary
+        # Initialize network dictionaries after processing
         self.email_network = defaultdict(lambda: defaultdict(int))
+        self.entity_connections = defaultdict(lambda: defaultdict(int))
         
         # Track some statistics
         total_relationships = 0
@@ -148,51 +195,63 @@ class EmailNetworkAnalyzer:
         for result in results:
             if result:
                 total_emails_found += result.get('total_emails', 0)
+                
+                # Process email relationships
                 if result['relationships']:
                     total_relationships += len(result['relationships'])
                     for sender, receiver in result['relationships']:
                         self.email_freq.update([sender, receiver])
                         self.email_network[sender][receiver] += 1
+                
+                # Process entity mentions and connections
+                if result.get('entities'):
+                    self.entity_mentions.update(result['entities'])
+                
+                # Process entity pairs
+                if result.get('entity_pairs'):
+                    for ent1, ent2 in result['entity_pairs']:
+                        self.entity_connections[ent1][ent2] += 1
+                        self.entity_connections[ent2][ent1] += 1
         
         logger.info(f"Found {len(self.email_freq)} unique email addresses")
         logger.info(f"Found {total_relationships} email relationships")
         logger.info(f"Found {total_emails_found} total email addresses")
+        logger.info(f"Found {len(self.entity_mentions)} unique entities")
         
         return dict(self.email_network), dict(self.email_freq)
 
     def create_network_visualization(self, min_weight=2):
-        """Create summary visualizations of email network patterns"""
-        logger.info("Creating network visualizations...")
+        """Create summary visualizations and corresponding D3 data"""
+        logger.info("Creating network visualizations and D3 data...")
         
-        # Create figure with 2x2 subplots
-        fig = plt.figure(figsize=(15, 15))
-        gs = fig.add_gridspec(2, 2)
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax3 = fig.add_subplot(gs[1, 0])
-        ax4 = fig.add_subplot(gs[1, 1])
+        # Create output directory for D3 data
+        d3_output_dir = os.path.join('reports', 'email_analysis', 'd3_data')
+        os.makedirs(d3_output_dir, exist_ok=True)
         
         # Get domain data
         domains = Counter(email.split('@')[1] for email in self.email_freq.keys())
-        top_domains = domains.most_common(10)  # Top 10 for clarity
+        top_domains = domains.most_common(10)
         domain_names = [d[0] for d in top_domains]
         domain_counts = [d[1] for d in top_domains]
         
-        # 1. Top Email Domains Bar Chart
-        sns.barplot(data=pd.DataFrame(top_domains, columns=['Domain', 'Count']), 
-                    y='Domain', x='Count', ax=ax1)
-        ax1.set_title('Top 10 Email Domains')
+        # 1. Save Bar Chart Data
+        bar_chart_data = [
+            {"domain": domain, "count": count} 
+            for domain, count in top_domains
+        ]
+        with open(os.path.join(d3_output_dir, 'domain_bar_chart.json'), 'w') as f:
+            json.dump(bar_chart_data, f, indent=2)
         
-        # 2. Email Activity Distribution
+        # 2. Save Email Activity Distribution Data
         connection_counts = [len(receivers) for receivers in self.email_network.values()]
-        sns.histplot(connection_counts, ax=ax2, bins=30)
-        ax2.set_title('Distribution of Email Connections')
-        ax2.set_xlabel('Number of Connections')
+        distribution_data = [
+            {"connections": count, "frequency": freq} 
+            for count, freq in Counter(connection_counts).items()
+        ]
+        with open(os.path.join(d3_output_dir, 'connection_distribution.json'), 'w') as f:
+            json.dump(distribution_data, f, indent=2)
         
-        # 3. Domain Network Graph
-        G = nx.Graph()
-        
-        # Calculate domain connections
+        # 3. Save Domain Network Data
         domain_matrix = np.zeros((10, 10))
         for sender, receivers in self.email_network.items():
             sender_domain = sender.split('@')[1]
@@ -204,73 +263,85 @@ class EmailNetworkAnalyzer:
                         j = domain_names.index(receiver_domain)
                         domain_matrix[i][j] += weight
         
-        # Add nodes and edges to graph
-        for i, (domain, count) in enumerate(zip(domain_names, domain_counts)):
-            G.add_node(domain, size=count)
+        # Create D3 network data
+        network_data = {
+            "nodes": [
+                {"id": domain, "group": 1, "size": count} 
+                for domain, count in zip(domain_names, domain_counts)
+            ],
+            "links": []
+        }
         
-        # Add edges with adaptive threshold
-        if domain_matrix.sum() > 0:  # Check if we have any connections
-            # Use a much more lenient threshold - show more connections
-            # Try using 10th percentile instead of 25th, or a small fixed percentage of max value
+        if domain_matrix.sum() > 0:
             edge_threshold = min(
-                np.percentile(domain_matrix[domain_matrix > 0], .1),  # .1th percentile
-                np.max(domain_matrix) * 0.999  # Or at least show top 99.9% of connections
+                np.percentile(domain_matrix[domain_matrix > 0], .1),
+                np.max(domain_matrix) * 0.999
             )
-            logger.debug(f"Edge threshold: {edge_threshold}")
             
             for i in range(len(domain_names)):
                 for j in range(i+1, len(domain_names)):
                     weight = domain_matrix[i][j]
                     if weight > edge_threshold:
-                        G.add_edge(domain_names[i], domain_names[j], weight=weight)
-                        logger.debug(f"Added edge: {domain_names[i]} - {domain_names[j]} (weight: {weight})")
+                        network_data["links"].append({
+                            "source": domain_names[i],
+                            "target": domain_names[j],
+                            "value": float(weight)
+                        })
         
-        # Draw network graph
-        pos = nx.spring_layout(G, k=1.5)
-        node_sizes = [G.nodes[node]['size'] * 50 for node in G.nodes()]
+        with open(os.path.join(d3_output_dir, 'domain_network.json'), 'w') as f:
+            json.dump(network_data, f, indent=2)
         
-        nx.draw_networkx_nodes(G, pos, ax=ax3, node_size=node_sizes, 
-                              node_color='lightblue', alpha=0.7)
+        # 4. Save Heatmap Data
+        heatmap_data = {
+            "domains": domain_names,
+            "matrix": domain_matrix.tolist()
+        }
+        with open(os.path.join(d3_output_dir, 'domain_heatmap.json'), 'w') as f:
+            json.dump(heatmap_data, f, indent=2)
         
-        # Draw edges only if we have any
-        edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
-        if edge_weights:  # Check if we have any edges
-            nx.draw_networkx_edges(G, pos, ax=ax3, 
-                                 width=np.array(edge_weights)/max(edge_weights)*3,
-                                 alpha=0.4)
-        else:
-            logger.warning("No edges met the threshold criteria for visualization")
+        # 5. Save Entity Network Data
+        top_entities = self.entity_mentions.most_common(10)
+        entity_network_data = {
+            "nodes": [
+                {"id": entity, "group": 1, "size": count}
+                for entity, count in top_entities
+            ],
+            "links": []
+        }
         
-        nx.draw_networkx_labels(G, pos, ax=ax3, font_size=8)
-        ax3.set_title('Domain Communication Network\n(Node size = email volume, Edge thickness = communication frequency)')
-        ax3.axis('off')
+        entity_names = [e[0] for e in top_entities]
+        for i, entity1 in enumerate(entity_names):
+            for j, entity2 in enumerate(entity_names[i+1:], i+1):
+                weight = self.entity_connections[entity1][entity2]
+                if weight > 0:
+                    entity_network_data["links"].append({
+                        "source": entity1,
+                        "target": entity2,
+                        "value": weight
+                    })
         
-        # 4. Domain Relationship Heatmap
-        # Normalize matrix for better visualization
-        max_value = np.max(domain_matrix)
-        if max_value > 0:
-            domain_matrix = domain_matrix / max_value * 100
+        with open(os.path.join(d3_output_dir, 'entity_network.json'), 'w') as f:
+            json.dump(entity_network_data, f, indent=2)
         
-        sns.heatmap(
-            domain_matrix,
-            xticklabels=[d.replace('.gov', '').replace('.com', '') for d in domain_names],
-            yticklabels=[d.replace('.gov', '').replace('.com', '') for d in domain_names],
-            ax=ax4,
-            cmap='YlOrRd',
-            annot=True,
-            fmt='.0f',
-            square=True,
-            cbar_kws={'label': 'Relative Communication Frequency (%)'}
-        )
+        # Create matplotlib visualization
+        fig = plt.figure(figsize=(20, 15))
+        gs = fig.add_gridspec(2, 2)
         
-        ax4.set_xticklabels(ax4.get_xticklabels(), rotation=45, ha='right')
-        ax4.set_yticklabels(ax4.get_yticklabels(), rotation=0)
-        ax4.set_title('Domain Communication Patterns\n(Top 10 Domains)')
-        ax4.set_xlabel('To Domain')
-        ax4.set_ylabel('From Domain')
+        # Add subplots
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, 0])
+        ax4 = fig.add_subplot(gs[1, 1])
+        
+        # Create your visualizations here
+        # Example:
+        ax1.bar(domain_names, domain_counts)
+        ax1.set_title('Top Email Domains')
+        
+        # Add more visualizations to other subplots...
         
         plt.tight_layout()
-        return fig
+        return fig  # Make sure to return the figure object
 
     def generate_statistics(self):
         """Generate email correspondence statistics"""

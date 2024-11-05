@@ -24,9 +24,13 @@ def generate_report(pdf_dir, output_dir, test_run=False):
     analyzer.analyze_directory(pdf_dir, test_run=test_run)
     
     # Create and save visualizations
-    fig = analyzer.create_network_visualization()
-    fig.savefig(os.path.join(output_dir, "email_analysis.png"), dpi=300, bbox_inches='tight')
-    plt.close(fig)
+    try:
+        fig = analyzer.create_network_visualization()
+        if fig:  # Only save if figure was created
+            fig.savefig(os.path.join(output_dir, "email_analysis.png"), dpi=300, bbox_inches='tight')
+            plt.close(fig)
+    except Exception as e:
+        logger.warning(f"Could not create matplotlib visualization: {str(e)}")
     
     # Generate and save statistics
     stats = analyzer.generate_statistics()
