@@ -5,16 +5,16 @@
       <div class="text-red-500 font-bold text-xs tracking-wider">
         D4BL
       </div>
-      <button class="p-2">
-        <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <div class="p-2 bg-gray-100 rounded-full">
+        <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-      </button>
-      <button class="p-2">
+      </div>
+      <NuxtLink to="/search" class="p-2 hover:bg-gray-100 rounded-full">
         <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-      </button>
+      </NuxtLink>
     </div>
 
     <!-- Main Content -->
@@ -22,60 +22,59 @@
       <!-- Header -->
       <div class="flex justify-between items-start mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">FOIA Documents</h1>
-        </div>
-        <div class="flex items-center gap-4">
-         
-          <div class="flex gap-2">
-            <button class="p-2 hover:bg-gray-100 rounded-full">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </button>
-            <NuxtLink to="/search" class="p-2 hover:bg-gray-100 rounded-full">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </NuxtLink>
-          </div>
+          <h1 class="text-2xl font-bold text-gray-900">Email Analytics Dashboard</h1>
+          <p class="text-gray-500 mt-1">Analyzing communication patterns across DC.gov domains</p>
         </div>
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-4 gap-4 mb-8">
-        <!-- Total Emails -->
-        <div class="bg-red-50 rounded-2xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-width="2" stroke-linecap="round"/>
+      <div class="grid grid-cols-3 gap-4 mb-8" v-if="stats">
+        <!-- Email Communications -->
+        <div class="bg-red-50/50 rounded-2xl p-6 border border-gray-100">
+          <div class="flex items-center gap-2 text-sm font-medium text-gray-900 mb-2">
+            <svg class="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
             </svg>
-            <span class="text-sm font-medium text-red-900">Total Documents</span>
+            <span>Email Communications</span>
           </div>
-          <div class="font-mono font-bold text-xl text-red-500">135,646</div>
-          <div class="mt-2 h-1 w-full bg-red-100 rounded-full">
-            <div class="h-full bg-red-500 rounded-full" style="width: 75%"></div>
+          <div class="text-4xl font-bold text-gray-900 mb-1">{{ stats.emailStats.total }}</div>
+          <div class="text-sm text-gray-600">Total Emails</div>
+          
+          <div class="mt-4 space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">Internal (DC.gov)</span>
+              <span class="font-medium text-gray-900">{{ stats.emailStats.internal }}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">External</span>
+              <span class="font-medium text-gray-900">{{ stats.emailStats.external }}</span>
+            </div>
           </div>
         </div>
 
-        <!-- Active Domains -->
-        <div class="bg-blue-50 rounded-2xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" stroke-width="2"/>
+        <!-- Media Communications -->
+        <div class="bg-green-50/50 rounded-2xl p-6 border border-gray-100">
+          <div class="flex items-center gap-2 text-sm font-medium text-gray-900 mb-2">
+            <svg class="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
+              <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 14.625v-9.75zM8.25 9.75a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zM18.75 9a.75.75 0 00-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 00.75-.75V9.75a.75.75 0 00-.75-.75h-.008zM4.5 9.75A.75.75 0 015.25 9h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V9.75z" />
             </svg>
-            <span class="text-sm font-medium text-blue-900">Active Domains</span>
+            <span>Media Communications</span>
           </div>
-          <div class="font-mono font-bold text-xl text-blue-500">142</div>
-          <div class="mt-2 h-1 w-full bg-blue-100 rounded-full">
-            <div class="h-full bg-blue-500 rounded-full" style="width: 60%"></div>
+          <div class="text-4xl font-bold text-gray-900 mb-1">{{ stats.mediaStats.totalMediaEmails }}</div>
+          <div class="text-sm text-gray-600">Total Media Outlet Emails</div>
+          
+          <div class="mt-4 space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">Top Media Outlet</span>
+              <span class="font-medium text-gray-900">{{ stats.mediaStats.topMediaOutlet.domain }}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">Active Media Outlets</span>
+              <span class="font-medium text-gray-900">{{ stats.mediaStats.mediaOutletCount }}</span>
+            </div>
           </div>
         </div>
-
-        <!-- Peak Traffic -->
-
-
-        <!-- Connected Agencies -->
- 
       </div>
 
       <!-- Visualization Grid -->
@@ -85,7 +84,7 @@
           <DomainBarChart class="h-[400px]" />
         </div>
         
-        <div class="bg-white rounded-2xl border border-gray-100 p-6"">
+        <div class="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Network</h3>
           <DomainNetwork class="h-[400px]" />
         </div>
@@ -105,10 +104,18 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useEmailStats } from '~/composables/useEmailStats'
 import DomainBarChart from '~/components/visualizations/DomainBarChart.vue'
 import DomainNetwork from '~/components/visualizations/DomainNetwork.vue'
 import DomainHeatmap from '~/components/visualizations/DomainHeatmap.vue'
 import EntityNetwork from '~/components/visualizations/EntityNetwork.vue'
+
+const { fetchData, stats } = useEmailStats()
+
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <style scoped>
