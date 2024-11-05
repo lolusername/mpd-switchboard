@@ -1,0 +1,281 @@
+{
+  "nodes": [
+    {
+      "id": "the DC Government",
+      "group": 1,
+      "size": 135615
+    },
+    {
+      "id": "OCTO Security Operations Center",
+      "group": 1,
+      "size": 135294
+    },
+    {
+      "id": "USA",
+      "group": 1,
+      "size": 123137
+    },
+    {
+      "id": "Washington",
+      "group": 1,
+      "size": 98809
+    },
+    {
+      "id": "DC",
+      "group": 1,
+      "size": 88465
+    },
+    {
+      "id": "U.S.",
+      "group": 1,
+      "size": 73968
+    },
+    {
+      "id": "Copyright Law",
+      "group": 1,
+      "size": 63801
+    },
+    {
+      "id": "US",
+      "group": 1,
+      "size": 47358
+    },
+    {
+      "id": "DC GOVERNMENT/OU",
+      "group": 1,
+      "size": 47107
+    },
+    {
+      "id": "NCR",
+      "group": 1,
+      "size": 42177
+    }
+  ],
+  "links": [
+    {
+      "source": "the DC Government",
+      "target": "OCTO Security Operations Center",
+      "value": 135293
+    },
+    {
+      "source": "the DC Government",
+      "target": "USA",
+      "value": 123113
+    },
+    {
+      "source": "the DC Government",
+      "target": "Washington",
+      "value": 98785
+    },
+    {
+      "source": "the DC Government",
+      "target": "DC",
+      "value": 88442
+    },
+    {
+      "source": "the DC Government",
+      "target": "U.S.",
+      "value": 73946
+    },
+    {
+      "source": "the DC Government",
+      "target": "Copyright Law",
+      "value": 63788
+    },
+    {
+      "source": "the DC Government",
+      "target": "US",
+      "value": 47342
+    },
+    {
+      "source": "the DC Government",
+      "target": "DC GOVERNMENT/OU",
+      "value": 47094
+    },
+    {
+      "source": "the DC Government",
+      "target": "NCR",
+      "value": 42166
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "USA",
+      "value": 122870
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "Washington",
+      "value": 98610
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "DC",
+      "value": 88289
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "U.S.",
+      "value": 73761
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "Copyright Law",
+      "value": 63644
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "US",
+      "value": 47251
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "DC GOVERNMENT/OU",
+      "value": 47080
+    },
+    {
+      "source": "OCTO Security Operations Center",
+      "target": "NCR",
+      "value": 42062
+    },
+    {
+      "source": "USA",
+      "target": "Washington",
+      "value": 95575
+    },
+    {
+      "source": "USA",
+      "target": "DC",
+      "value": 85946
+    },
+    {
+      "source": "USA",
+      "target": "U.S.",
+      "value": 67216
+    },
+    {
+      "source": "USA",
+      "target": "Copyright Law",
+      "value": 57804
+    },
+    {
+      "source": "USA",
+      "target": "US",
+      "value": 45554
+    },
+    {
+      "source": "USA",
+      "target": "DC GOVERNMENT/OU",
+      "value": 43845
+    },
+    {
+      "source": "USA",
+      "target": "NCR",
+      "value": 40298
+    },
+    {
+      "source": "Washington",
+      "target": "DC",
+      "value": 87573
+    },
+    {
+      "source": "Washington",
+      "target": "U.S.",
+      "value": 53468
+    },
+    {
+      "source": "Washington",
+      "target": "Copyright Law",
+      "value": 46313
+    },
+    {
+      "source": "Washington",
+      "target": "US",
+      "value": 43426
+    },
+    {
+      "source": "Washington",
+      "target": "DC GOVERNMENT/OU",
+      "value": 38961
+    },
+    {
+      "source": "Washington",
+      "target": "NCR",
+      "value": 33454
+    },
+    {
+      "source": "DC",
+      "target": "U.S.",
+      "value": 48370
+    },
+    {
+      "source": "DC",
+      "target": "Copyright Law",
+      "value": 41922
+    },
+    {
+      "source": "DC",
+      "target": "US",
+      "value": 41060
+    },
+    {
+      "source": "DC",
+      "target": "DC GOVERNMENT/OU",
+      "value": 35701
+    },
+    {
+      "source": "DC",
+      "target": "NCR",
+      "value": 29124
+    },
+    {
+      "source": "U.S.",
+      "target": "Copyright Law",
+      "value": 54889
+    },
+    {
+      "source": "U.S.",
+      "target": "US",
+      "value": 27620
+    },
+    {
+      "source": "U.S.",
+      "target": "DC GOVERNMENT/OU",
+      "value": 25823
+    },
+    {
+      "source": "U.S.",
+      "target": "NCR",
+      "value": 22152
+    },
+    {
+      "source": "Copyright Law",
+      "target": "US",
+      "value": 22531
+    },
+    {
+      "source": "Copyright Law",
+      "target": "DC GOVERNMENT/OU",
+      "value": 22858
+    },
+    {
+      "source": "Copyright Law",
+      "target": "NCR",
+      "value": 19069
+    },
+    {
+      "source": "US",
+      "target": "DC GOVERNMENT/OU",
+      "value": 18499
+    },
+    {
+      "source": "US",
+      "target": "NCR",
+      "value": 12808
+    },
+    {
+      "source": "DC GOVERNMENT/OU",
+      "target": "NCR",
+      "value": 10076
+    }
+  ]
+}
