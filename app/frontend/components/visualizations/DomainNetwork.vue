@@ -1,20 +1,24 @@
 <template>
   <div class="relative w-full h-full flex flex-col">
-    <!-- Main visualization container with explicit height -->
-    <div ref="chartContainer" class="h-[500px]"></div>
+    <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap</h3>
+    <div ref="chartContainer" class="h-[300px] bg-blue-50 rounded-lg"></div>
     
-    <!-- Legend at bottom, not overlapping -->
+    <!-- Legend -->
     <div class="flex items-center justify-start gap-8 p-3 mt-2 bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white">73</div>
+        <div class="flex items-center gap-1">
+          <div class="w-3 h-3 rounded-full bg-emerald-600"></div>
+          <div class="w-4 h-4 rounded-full bg-emerald-600"></div>
+          <div class="w-5 h-5 rounded-full bg-emerald-600"></div>
+        </div>
         <div>
-          <span class="font-medium">Email Domain Size:</span>
-          <span class="text-gray-600 ml-1">Number of emails sent from domain</span>
+          <span class="font-medium">Domain Size:</span>
+          <span class="text-gray-600 ml-1">Number of emails in domain</span>
         </div>
       </div>
       
       <div class="flex items-center gap-2">
-        <div class="w-8 h-[2px] bg-red-500"></div>
+        <div class="w-8 h-[2px] bg-emerald-600"></div>
         <div>
           <span class="font-medium">Connections:</span>
           <span class="text-gray-600 ml-1">Email communication between domains</span>
@@ -33,49 +37,40 @@ const chartContainer = ref(null)
 onMounted(async () => {
   const data = await fetch('/d3_data/domain_network.json').then(res => res.json())
   
-  const width = chartContainer.value.clientWidth
-  const height = chartContainer.value.clientHeight
-  const padding = 80
-  
-  // Clear any existing SVG
+  // Set dimensions
+  const margin = { top: 20, right: 20, bottom: 20, left: 20 }
+  const width = chartContainer.value.clientWidth - margin.left - margin.right
+  const height = 300 - margin.top - margin.bottom
+  const centerX = width / 2
+  const centerY = height / 2
+
+  // Clear existing
   d3.select(chartContainer.value).selectAll('*').remove()
   
   const svg = d3.select(chartContainer.value)
     .append('svg')
-    .attr('width', width)
-    .attr('height', height)
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
     .append('g')
-    .attr('transform', `translate(${width/2},${height/2})`)
+    .attr('transform', `translate(${margin.left},${margin.top})`)
 
-  // Scale node sizes based on container size
-  const maxSize = d3.max(data.nodes, d => d.size)
-  const sizeScale = d3.scaleLinear()
-    .domain([0, maxSize])
-    .range([5, 30])
-
-  // Modified simulation with adjusted forces
+  // Create force simulation
   const simulation = d3.forceSimulation(data.nodes)
-    .force('link', d3.forceLink(data.links)
-      .id(d => d.id)
-      .distance(180))
-    .force('charge', d3.forceManyBody().strength(-800))
-    .force('collision', d3.forceCollide().radius(d => sizeScale(d.size) + 30))
-    .force('center', d3.forceCenter(0, 0))
-    .force('x', d3.forceX().strength(0.1))
-    .force('y', d3.forceY().strength(0.1))
+    .force('charge', d3.forceManyBody().strength(-400))
+    .force('center', d3.forceCenter(centerX, centerY))
+    .force('collision', d3.forceCollide().radius(45))
+    .on('tick', ticked)
 
-  // Create links
-  const link = svg.append('g')
-    .selectAll('line')
+  // Add links
+  const links = svg.selectAll('line')
     .data(data.links)
     .join('line')
-    .attr('stroke', 'var(--viz-secondary)')
-    .attr('stroke-opacity', 0.3)
-    .attr('stroke-width', d => Math.sqrt(d.value))
+    .attr('stroke', '#059669')
+    .attr('stroke-opacity', 0.2)
+    .attr('stroke-width', 1)
 
-  // Create node groups
-  const node = svg.append('g')
-    .selectAll('g')
+  // Add nodes
+  const nodes = svg.selectAll('g')
     .data(data.nodes)
     .join('g')
     .call(d3.drag()
@@ -84,74 +79,55 @@ onMounted(async () => {
       .on('end', dragended))
 
   // Add circles to nodes
-  node.append('circle')
-    .attr('r', d => sizeScale(d.size))
-    .attr('fill', 'var(--viz-primary)')
-    .attr('stroke', 'white')
-    .attr('stroke-width', 2)
-    .attr('opacity', 0.9)
+  nodes.append('circle')
+    .attr('r', d => Math.sqrt(d.value) * 4)
+    .attr('fill', d => d.id === 'dc.gov' ? '#059669' : 'white')
+    .attr('fill-opacity', d => d.id === 'dc.gov' ? 1 : 0.1)
+    .attr('stroke', '#059669')
+    .attr('stroke-width', 1)
 
-  // Add email count labels
-  node.append('text')
-    .text(d => d.size)
+  // Add count labels
+  nodes.append('text')
+    .text(d => d.value)
     .attr('text-anchor', 'middle')
-    .attr('dy', '0.3em')
-    .attr('fill', '#ffffff')
-    .style('font-size', '12px')
-    .style('font-weight', '600')
+    .attr('dy', '.3em')
+    .attr('font-size', '12px')
+    .attr('fill', d => d.id === 'dc.gov' ? 'white' : '#059669')
 
-  // Add domain labels with background
-  node.append('text')
+  // Add domain labels
+  nodes.append('text')
     .text(d => d.id)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => sizeScale(d.size) + 20)
-    .attr('fill', '#1f2937')
-    .style('font-size', '12px')
-    .style('font-weight', '500')
-    .clone(true)
-    .lower()
-    .attr('stroke', '#ffffff')
-    .attr('stroke-width', 3)
+    .attr('dy', d => Math.sqrt(d.value) * 4 + 15)
+    .attr('font-size', '12px')
+    .attr('fill', '#666')
 
-  // Center dc.gov
-  const dcGov = data.nodes.find(n => n.id === 'dc.gov')
-  if (dcGov) {
-    dcGov.fx = 0
-    dcGov.fy = 0
-  }
-
-  simulation.on('tick', () => {
-    // Constrain nodes to container bounds
-    node.attr('transform', d => {
-      d.x = Math.max(-width/2 + padding, Math.min(width/2 - padding, d.x))
-      d.y = Math.max(-height/2 + padding, Math.min(height/2 - padding, d.y))
-      return `translate(${d.x},${d.y})`
-    })
-
-    link
+  function ticked() {
+    links
       .attr('x1', d => d.source.x)
       .attr('y1', d => d.source.y)
       .attr('x2', d => d.target.x)
       .attr('y2', d => d.target.y)
-  })
 
-  function dragstarted(event, d) {
+    nodes
+      .attr('transform', d => `translate(${d.x},${d.y})`)
+  }
+
+  function dragstarted(event) {
     if (!event.active) simulation.alphaTarget(0.3).restart()
-    d.fx = d.x
-    d.fy = d.y
+    event.subject.fx = event.subject.x
+    event.subject.fy = event.subject.y
   }
 
-  function dragged(event, d) {
-    d.fx = event.x
-    d.fy = event.y
+  function dragged(event) {
+    event.subject.fx = event.x
+    event.subject.fy = event.y
   }
 
-  function dragended(event, d) {
+  function dragended(event) {
     if (!event.active) simulation.alphaTarget(0)
-    if (d.id !== 'dc.gov') {
-      d.fx = null
-      d.fy = null
-    }
+    event.subject.fx = null
+    event.subject.fy = null
   }
 })
 </script>

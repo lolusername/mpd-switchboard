@@ -58,7 +58,6 @@ onMounted(() => {
     .attr('cy', d => yScale(d.amount))
     .attr('r', 5)
     .attr('fill', 'steelblue')
-    .attr('opacity', 0.7)
 
   // Add axes
   svg.append('g')

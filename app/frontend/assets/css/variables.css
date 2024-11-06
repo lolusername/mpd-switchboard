@@ -1,10 +1,10 @@
 :root {
   /* Core visualization palette */
-  --viz-primary: #327039;        /* Deep blue */
+  --viz-primary: #2E8B57;        /* Deep blue */
   --viz-secondary: #567EBB;      /* Medium blue */
   --viz-accent: #88A9DD;         /* Light blue */
   --viz-highlight: #1D3557;      /* Dark blue */
   --viz-background: #F6F3EC;     /* Light background */
   --viz-text: hsl(210, 29%, 24%);           /* Dark text */
-  --viz-beige: #A97B56
+  --viz-bar: #003366
 } 

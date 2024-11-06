@@ -4,7 +4,7 @@
     <Sidebar />
 
     <!-- Main Content -->
-    <div class="ml-16 p-8">
+    <div class="ml-48 p-8">
       <!-- Header -->
       <div class="flex justify-between items-start mb-8">
         <div>

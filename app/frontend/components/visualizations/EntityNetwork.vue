@@ -6,9 +6,9 @@
     <div class="flex items-center justify-start gap-8 p-3 mt-auto bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1">
-          <div class="w-3 h-3 rounded-full bg-[#327039]"></div>
-          <div class="w-4 h-4 rounded-full bg-[#327039]"></div>
-          <div class="w-5 h-5 rounded-full bg-[#327039]"></div>
+          <div class="w-3 h-3 rounded-full bg-[#2E8B57]"></div>
+          <div class="w-4 h-4 rounded-full bg-[#2E8B57]"></div>
+          <div class="w-5 h-5 rounded-full bg-[#2E8B57]"></div>
         </div>
         <div>
           <span class="font-medium">Entity Size:</span>
@@ -17,7 +17,7 @@
       </div>
       
       <div class="flex items-center gap-2">
-        <div class="w-12 h-[2px] bg-[#327039] opacity-20"></div>
+        <div class="w-12 h-[2px] bg-[#2E8B57] opacity-20"></div>
         <div>
           <span class="font-medium">Connections:</span>
           <span class="text-gray-600 ml-1">Top 25% strongest co-occurrences</span>
@@ -25,7 +25,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-full bg-[#327039]"></div>
+        <div class="w-5 h-5 rounded-full bg-[#2E8B57]"></div>
         <div>
           <span class="font-medium">Core Entities:</span>
           <span class="text-gray-600 ml-1">DC Gov, OCTO, USA (>100k mentions)</span>

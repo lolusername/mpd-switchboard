@@ -1,21 +1,26 @@
 <template>
   <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[450px]"></div>
+    <div ref="chartContainer" class="h-[calc(100%-80px)] rounded-lg"></div>
     
-    <!-- Legend -->
-    <div class="flex items-center justify-start gap-8 p-3 mt-auto bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="w-24 h-1 bg-[--viz-primary]"></div>
-        <div>
-          <span class="font-medium">Email Flow:</span>
-          <span class="text-gray-600 ml-1">Width = Volume of communication</span>
+    <!-- Vertical legend -->
+    <div class="flex flex-col gap-2 p-2 mt-1 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-0.5">
+          <div class="w-2.5 h-2.5 rounded-full bg-[#2E8B57]"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-[#2E8B57]"></div>
+          <div class="w-4.5 h-4.5 rounded-full bg-[#2E8B57]"></div>
+        </div>
+        <div class="whitespace-nowrap">
+          <span class="font-medium">Domain Size:</span>
+          <span class="text-gray-600 ml-1">Emails in domain</span>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-full border-2 border-red-500"></div>
-        <div>
-          <span class="font-medium">Domain Size:</span>
-          <span class="text-gray-600 ml-1">Circle area = Total emails</span>
+      
+      <div class="flex items-center gap-1.5">
+        <div class="w-6 h-[2px] bg-[#2E8B57]"></div>
+        <div class="whitespace-nowrap">
+          <span class="font-medium">Connections:</span>
+          <span class="text-gray-600 ml-1">Email communication</span>
         </div>
       </div>
     </div>
@@ -29,17 +34,32 @@ import * as d3 from 'd3'
 const chartContainer = ref(null)
 
 onMounted(async () => {
-  const data = await fetch('/d3_data/domain_heatmap.json').then(res => res.json())
+  // Get connection data
+  const connectionData = await fetch('/d3_data/domain_heatmap.json').then(res => res.json())
   
-  // Fix the typo'd domains
-  data.domains = data.domains.map(domain => domain.replace('.corn', '.com'))
+  // Get domain stats
+  let domainStats = await fetch('/d3_data/domain_bar_chart.json').then(res => res.json())
   
-  const stats = await fetch('/d3_data/domain_bar_chart.json').then(res => res.json())
-  
+  // Fix all .corn domains to .com and deduplicate in one step
+  domainStats = Array.from(new Map(
+    domainStats.map(node => [
+      node.domain.replace('.corn', '.com'),
+      {
+        ...node,
+        domain: node.domain.replace('.corn', '.com')
+      }
+    ])
+  ).values())
+
+  // Also fix domains in the connection matrix
+  connectionData.domains = connectionData.domains.map(domain => domain.replace('.corn', '.com'))
+
+  // Now use connectionData.matrix for the links and domainStats for the nodes
+
   // Set up dimensions
-  const margin = { top: 20, right: 20, bottom: 40, left: 20 }
+  const margin = { top: 20, right: 20, bottom: 20, left: 20 }
   const width = chartContainer.value.clientWidth - margin.left - margin.right
-  const height = 450 - margin.top - margin.bottom
+  const height = 350 - margin.top - margin.bottom
   const centerX = width / 2
   const centerY = height / 2
 
@@ -55,164 +75,112 @@ onMounted(async () => {
 
   // Create scales
   const size = d3.scaleSqrt()
-    .domain([0, d3.max(stats, d => d.count)])
+    .domain([0, d3.max(domainStats, d => d.count)])
     .range([4, 30])
 
   const flowWidth = d3.scaleLinear()
-    .domain([0, d3.max(data.matrix.flat())])
+    .domain([0, d3.max(connectionData.matrix.flat())])
     .range([2, 20])
 
-  // Calculate positions - dc.gov in center, others in orbit
-  const angleStep = (2 * Math.PI) / (data.domains.length - 1)
-  const radius = Math.min(width, height) / 3
-  
-  const positions = new Map()
-  let currentAngle = -Math.PI / 2 // Start at top
+  // Adjust force simulation to radiate from center
+  const simulation = d3.forceSimulation(domainStats)
+    .force('charge', d3.forceManyBody().strength(-200)) // Reduced strength for less repulsion
+    .force('center', d3.forceCenter(centerX, centerY))
+    .force('collision', d3.forceCollide().radius(45)) // Fixed radius for more even spacing
+    .force('radial', d3.forceRadial(120, centerX, centerY).strength(0.6)) // Adjusted radius and strength for better circle
+    .on('tick', ticked)
 
-  data.domains.forEach(domain => {
-    if (domain === 'dc.gov') {
-      positions.set(domain, { x: centerX, y: centerY })
+  // Keep dc.gov fixed in center but let others move
+  domainStats.forEach(node => {
+    if (node.domain === 'dc.gov') {
+      node.fx = centerX
+      node.fy = centerY
     } else {
-      positions.set(domain, {
-        x: centerX + radius * Math.cos(currentAngle),
-        y: centerY + radius * Math.sin(currentAngle)
-      })
-      currentAngle += angleStep
+      node.fx = null
+      node.fy = null
     }
   })
 
-  // Draw flows first (under nodes)
-  data.domains.forEach((source, i) => {
-    data.domains.forEach((target, j) => {
-      const value = data.matrix[i][j]
-      if (value > 0) {
-        const sourcePos = positions.get(source)
-        const targetPos = positions.get(target)
-        
-        // Create gradient for flow
-        const gradientId = `flow-gradient-${i}-${j}`
-        const gradient = svg.append('defs')
-          .append('linearGradient')
-          .attr('id', gradientId)
-          .attr('gradientUnits', 'userSpaceOnUse')
-          .attr('x1', sourcePos.x)
-          .attr('y1', sourcePos.y)
-          .attr('x2', targetPos.x)
-          .attr('y2', targetPos.y)
+  // Add links
+  const links = svg.selectAll('line')
+    .data(connectionData.matrix.flatMap((row, i) => 
+      row.map((value, j) => ({
+        source: domainStats[i],
+        target: domainStats[j],
+        value: value
+      })).filter(d => d.value > 0)
+    ))
+    .join('line')
+    .attr('stroke', '#2E8B57')
+    .attr('stroke-opacity', 0.2)
+    .attr('stroke-width', d => flowWidth(d.value))
 
-        gradient.append('stop')
-          .attr('offset', '0%')
-          .attr('stop-color', '#fee2e2') // red-100
+  // Add nodes
+  const nodes = svg.selectAll('g')
+    .data(domainStats)
+    .join('g')
+    .call(d3.drag()
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended))
 
-        gradient.append('stop')
-          .attr('offset', '100%')
-          .attr('stop-color', '#327039') // red-600
+  // Add circles to nodes
+  nodes.append('circle')
+    .attr('r', d => Math.sqrt(d.count) * 4)
+    .attr('fill', d => d.domain === 'dc.gov' ? '#2E8B57' : 'white')
+    .attr('fill-opacity', d => d.domain === 'dc.gov' ? 1 : 0.1)
+    .attr('stroke', '#2E8B57')
+    .attr('stroke-width', 1)
 
-        // Draw the flow
-        svg.append('path')
-          .attr('d', d3.linkHorizontal()({
-            source: [sourcePos.x, sourcePos.y],
-            target: [targetPos.x, targetPos.y]
-          }))
-          .attr('stroke', `url(#${gradientId})`)
-          .attr('stroke-width', flowWidth(value))
-          .attr('fill', 'none')
-          .attr('opacity', 0.7)
-      }
-    })
-  })
+  // Add count labels
+  nodes.append('text')
+    .text(d => d.count)
+    .attr('text-anchor', 'middle')
+    .attr('dy', '.3em')
+    .attr('font-size', '12px')
+    .attr('fill', d => d.domain === 'dc.gov' ? 'white' : '#2E8B57')
 
-  // Helper function to check if domain is suspicious
-  const isSuspiciousDomain = (domain) => {
-    const originalDomain = domain.replace('.corn', '.com')
-    return domain.endsWith('.corn') && data.domains.includes(originalDomain)
+  // Add domain labels
+  nodes.append('text')
+    .text(d => d.domain)
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => Math.sqrt(d.count) * 4 + 20)
+    .attr('font-size', '12px')
+    .attr('fill', '#666')
+
+  function ticked() {
+    links
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y)
+
+    nodes
+      .attr('transform', d => `translate(${d.x},${d.y})`)
   }
 
-  // Draw nodes
-  data.domains.forEach(domain => {
-    const pos = positions.get(domain)
-    const domainStats = stats.find(d => d.domain === domain)
-    const nodeSize = size(domainStats.count)
-    const isSuspicious = isSuspiciousDomain(domain)
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart()
+    event.subject.fx = event.subject.x
+    event.subject.fy = event.subject.y
+  }
 
-    // Node circle with conditional styling
-    svg.append('circle')
-      .attr('cx', pos.x)
-      .attr('cy', pos.y)
-      .attr('r', nodeSize)
-      .attr('fill', domain === 'dc.gov' ? '#327039' : (isSuspicious ? '#fee2e2' : '#f3f4f6'))
-      .attr('stroke', isSuspicious ? '#991b1b' : '#327039')
-      .attr('stroke-width', isSuspicious ? 2 : 1.5)
-      .attr('stroke-dasharray', isSuspicious ? '4,2' : 'none')
+  function dragged(event) {
+    event.subject.fx = event.x
+    event.subject.fy = event.y
+  }
 
-    // Domain label with conditional styling
-    svg.append('text')
-      .attr('x', pos.x)
-      .attr('y', pos.y + nodeSize + 15)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '12px')
-      .attr('fill', isSuspicious ? '#991b1b' : '#1f2937')
-      .attr('font-weight', isSuspicious ? '600' : '400')
-      .text(domain)
-      
-    // Add warning icon for suspicious domains
-    if (isSuspicious) {
-      svg.append('text')
-        .attr('x', pos.x - nodeSize - 5)
-        .attr('y', pos.y - nodeSize - 5)
-        .attr('font-family', 'Arial')
-        .attr('font-size', '14px')
-        .attr('fill', '#991b1b')
-        .attr('text-anchor', 'end')
-        .text('⚠️')
-        
-      // Add "Possible typosquatting" label
-      svg.append('text')
-        .attr('x', pos.x)
-        .attr('y', pos.y + nodeSize + 30)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '10px')
-        .attr('fill', '#991b1b')
-        .attr('font-style', 'italic')
-        .text('Possible typosquatting')
-    }
-
-    // Size label
-    svg.append('text')
-      .attr('x', pos.x)
-      .attr('y', pos.y)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'middle')
-      .attr('font-size', '11px')
-      .attr('fill', domain === 'dc.gov' ? 'white' : (isSuspicious ? '#991b1b' : '#4b5563'))
-      .text(domainStats.count)
-  })
-
-  // Update legend to include suspicious domain indicator
-  const legend = d3.select(chartContainer.value)
-    .select('.legend')
-    .append('div')
-    .attr('class', 'flex items-center gap-2 ml-8')
-    
-  legend.append('div')
-    .attr('class', 'w-5 h-5 rounded-full border-2 border-red-800 bg-red-50')
-    .style('border-style', 'dashed')
-    
-  legend.append('div')
-    .html(`
-      <span class="font-medium">Suspicious Domain:</span>
-      <span class="text-gray-600 ml-1">Possible typosquatting (.corn)</span>
-    `)
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0)
+    event.subject.fx = null
+    event.subject.fy = null
+  }
 })
 </script>
 
 <style scoped>
-text {
-  pointer-events: none;
-}
-
-/* Ensure the container properly contains all elements */
-.relative {
-  min-height: 500px;
+.domain-heatmap {
+  width: 100%;
+  height: 100%;
 }
 </style> 
