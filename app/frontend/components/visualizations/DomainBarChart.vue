@@ -38,7 +38,7 @@ onMounted(async () => {
     .attr('x', 0)
     .attr('height', y.bandwidth())
     .attr('width', d => x(d.count))
-    .attr('fill', 'var(--viz-primary)')
+    .attr('fill', 'var(--viz-beige)')
     .attr('opacity', 0.9)
     .attr('rx', 4)
 

@@ -5,7 +5,7 @@
     <!-- Legend -->
     <div class="flex items-center justify-start gap-8 p-3 mt-auto bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex items-center gap-2">
-        <div class="w-24 h-1 bg-gradient-to-r from-red-100 to-red-600"></div>
+        <div class="w-24 h-1 bg-[--viz-primary]"></div>
         <div>
           <span class="font-medium">Email Flow:</span>
           <span class="text-gray-600 ml-1">Width = Volume of communication</span>
@@ -106,7 +106,7 @@ onMounted(async () => {
 
         gradient.append('stop')
           .attr('offset', '100%')
-          .attr('stop-color', '#dc2626') // red-600
+          .attr('stop-color', '#2C5F2D') // red-600
 
         // Draw the flow
         svg.append('path')
@@ -140,8 +140,8 @@ onMounted(async () => {
       .attr('cx', pos.x)
       .attr('cy', pos.y)
       .attr('r', nodeSize)
-      .attr('fill', domain === 'dc.gov' ? '#dc2626' : (isSuspicious ? '#fee2e2' : '#f3f4f6'))
-      .attr('stroke', isSuspicious ? '#991b1b' : '#dc2626')
+      .attr('fill', domain === 'dc.gov' ? '#2C5F2D' : (isSuspicious ? '#fee2e2' : '#f3f4f6'))
+      .attr('stroke', isSuspicious ? '#991b1b' : '#2C5F2D')
       .attr('stroke-width', isSuspicious ? 2 : 1.5)
       .attr('stroke-dasharray', isSuspicious ? '4,2' : 'none')
 

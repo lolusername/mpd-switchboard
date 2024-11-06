@@ -1,16 +1,10 @@
 :root {
   /* Core visualization palette */
-  --viz-primary: #2B4C7E;        /* Deep blue */
+  --viz-primary: #2C5F2D;        /* Deep blue */
   --viz-secondary: #567EBB;      /* Medium blue */
   --viz-accent: #88A9DD;         /* Light blue */
   --viz-highlight: #1D3557;      /* Dark blue */
-  --viz-background: #F8F9FA;     /* Light background */
-  --viz-text: #2C3E50;           /* Dark text */
-  
-  /* Gradient scale for heatmaps */
-  --heat-scale-1: #F7FBFF;
-  --heat-scale-2: #DEEBF7;
-  --heat-scale-3: #9ECAE1;
-  --heat-scale-4: #4292C6;
-  --heat-scale-5: #084594;
+  --viz-background: #F6F3EC;     /* Light background */
+  --viz-text: hsl(210, 29%, 24%);           /* Dark text */
+  --viz-beige: #A16945
 } 

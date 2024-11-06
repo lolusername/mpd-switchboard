@@ -1,21 +1,7 @@
 <template>
   <div class="min-h-screen bg-slate-50">
     <!-- Sidebar -->
-    <div class="fixed left-0 top-0 h-full w-16 bg-white border-r border-gray-100 flex flex-col items-center py-4 space-y-6">
-      <div class="text-red-500 font-bold text-xs tracking-wider">
-        D4BL
-      </div>
-      <NuxtLink to="/" class="p-2 hover:bg-gray-100 rounded-full">
-        <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </NuxtLink>
-      <div class="p-2 bg-gray-100 rounded-full">
-        <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </div>
-    </div>
+    <Sidebar />
 
     <!-- Main Content -->
     <div class="ml-16 p-8">
