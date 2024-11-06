@@ -106,7 +106,7 @@ onMounted(async () => {
 
         gradient.append('stop')
           .attr('offset', '100%')
-          .attr('stop-color', '#2C5F2D') // red-600
+          .attr('stop-color', '#327039') // red-600
 
         // Draw the flow
         svg.append('path')
@@ -140,8 +140,8 @@ onMounted(async () => {
       .attr('cx', pos.x)
       .attr('cy', pos.y)
       .attr('r', nodeSize)
-      .attr('fill', domain === 'dc.gov' ? '#2C5F2D' : (isSuspicious ? '#fee2e2' : '#f3f4f6'))
-      .attr('stroke', isSuspicious ? '#991b1b' : '#2C5F2D')
+      .attr('fill', domain === 'dc.gov' ? '#327039' : (isSuspicious ? '#fee2e2' : '#f3f4f6'))
+      .attr('stroke', isSuspicious ? '#991b1b' : '#327039')
       .attr('stroke-width', isSuspicious ? 2 : 1.5)
       .attr('stroke-dasharray', isSuspicious ? '4,2' : 'none')
 
