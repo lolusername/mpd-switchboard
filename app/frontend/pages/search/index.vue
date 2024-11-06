@@ -33,7 +33,9 @@
           <input
             v-model="searchQuery"
             placeholder="Search across all email documents..."
-            class="w-full p-4 pr-12 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
+            class="w-full p-4 pr-12 bg-opacity-50 border-none rounded-xl focus:ring-2 transition-all"
+            :class="[isLoading ? 'opacity-75' : '']"
+            style="background: var(--pattern); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);"
             :disabled="isLoading"
           />
           <div class="absolute right-4 top-1/2 -translate-y-1/2">
@@ -87,8 +89,9 @@
             <div
               v-for="result in searchResults"
               :key="result.file_name"
-              class="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              :class="{ 'border-2 border-red-500': selectedResult === result }"
+              class="p-4 bg-opacity-50 rounded-xl hover:bg-opacity-75 transition-colors cursor-pointer"
+              :class="{ 'border-2': selectedResult === result }"
+              style="background: var(--pattern); border-color: var(--primary);"
               @click="showFullContent(result)"
             >
               <h4 class="font-medium text-gray-900">{{ result.title || result.file_name }}</h4>
@@ -128,9 +131,13 @@
               class="px-3 py-1 rounded-md text-sm transition-colors"
               :class="[
                 page === pagination.current_page
-                  ? 'bg-red-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'text-white'
+                  : 'bg-opacity-50 hover:bg-opacity-75'
               ]"
+              :style="{
+                background: page === pagination.current_page ? 'var(--primary)' : 'var(--pattern)',
+                color: page === pagination.current_page ? 'white' : 'var(--neutral)'
+              }"
             >
               {{ page }}
             </button>
@@ -403,72 +410,85 @@
   </script>
   
   <style>
+  :root {
+    --primary: #1a1a1a; /* Deep black */
+    --primary-light: #2d2d2d; /* Lighter black */
+    --accent: #4a4a4a; /* Cool gray */
+    --neutral: #232323; /* Off-black */
+    --background: #fafafa; /* Almost white */
+    --highlight: #e5e5e5; /* Light gray for highlights */
+  }
+
+  /* Clean, minimal styling matching the original */
   .email-header {
-    @apply bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200;
+    @apply bg-slate-50 rounded-xl p-6 mb-6;
   }
 
   .header-row {
-    @apply flex mb-2 last:mb-0;
+    @apply flex gap-4 mb-2;
   }
 
   .header-label {
-    @apply w-24 font-medium text-gray-600;
+    @apply w-24 font-medium text-gray-700;
   }
 
   .header-value {
-    @apply flex-1 text-gray-900;
-  }
-
-  .caution-box {
-    @apply bg-yellow-50 border-l-4 border-yellow-400 p-4 my-4 text-yellow-700;
-  }
-
-  .tweet-box {
-    @apply bg-blue-50 rounded-lg p-4 my-4;
-  }
-
-  .tweet-header {
-    @apply font-semibold mb-2 text-blue-800;
-  }
-
-  .tweet-content {
-    @apply text-gray-800;
-  }
-
-  .location-box {
-    @apply bg-green-50 rounded-lg p-4 my-4;
-  }
-
-  .location-label {
-    @apply font-semibold text-green-800 mb-2;
-  }
-
-  .location-value {
-    @apply text-gray-800;
-  }
-
-  .eyewitness-box {
-    @apply bg-purple-50 rounded-lg p-4 my-4;
-  }
-
-  .eyewitness-line {
-    @apply mb-1 last:mb-0;
-  }
-
-  .doc-id {
-    @apply font-mono text-sm bg-gray-100 px-3 py-1.5 rounded my-2 text-gray-700 inline-block;
+    @apply flex-1 text-gray-600;
   }
 
   .content-block {
-    @apply my-4 leading-relaxed;
+    @apply my-4 leading-relaxed text-gray-600;
   }
 
-  /* Search highlight styling */
+  /* Simple highlight styling */
   :deep(em) {
-    @apply bg-yellow-200 not-italic px-1 rounded;
+    @apply bg-neutral-100 text-neutral-900 px-1 rounded not-italic;
   }
 
-  .header-value.redacted {
-    @apply text-gray-400 italic;
+  .doc-id {
+    @apply font-mono text-sm text-gray-500 my-2;
+  }
+
+  /* Clean, minimal scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300;
+  }
+
+  /* Update existing color classes */
+  .bg-red-500 {
+    @apply bg-neutral-900;
+  }
+
+  .text-red-500 {
+    @apply text-neutral-900;
+  }
+
+  .bg-red-50 {
+    background-color: #f5f5f5;
+  }
+
+  .border-red-500 {
+    @apply border-neutral-900;
+  }
+
+  .hover\:text-red-500:hover {
+    @apply text-neutral-900;
+  }
+
+  .focus\:ring-red-500:focus {
+    @apply ring-neutral-900;
   }
   </style>

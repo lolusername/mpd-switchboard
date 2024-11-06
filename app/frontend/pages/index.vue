@@ -84,10 +84,10 @@
           <DomainBarChart class="h-[400px]" />
         </div>
         
-        <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <!-- <div class="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Network</h3>
           <DomainNetwork class="h-[400px]" />
-        </div>
+        </div> -->
         
         <div class="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap</h3>

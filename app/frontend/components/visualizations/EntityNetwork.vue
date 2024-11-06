@@ -1,5 +1,38 @@
 <template>
-  <div ref="chartContainer" class="w-full h-full"></div>
+  <div class="relative w-full h-full flex flex-col">
+    <div ref="chartContainer" class="h-[450px]"></div>
+    
+    <!-- Legend -->
+    <div class="flex items-center justify-start gap-8 p-3 mt-auto bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1">
+          <div class="w-3 h-3 rounded-full bg-[#4a77b5]"></div>
+          <div class="w-4 h-4 rounded-full bg-[#4a77b5]"></div>
+          <div class="w-5 h-5 rounded-full bg-[#4a77b5]"></div>
+        </div>
+        <div>
+          <span class="font-medium">Entity Size:</span>
+          <span class="text-gray-600 ml-1">Mentions in email communications</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <div class="w-12 h-[2px] bg-[#4a77b5] opacity-20"></div>
+        <div>
+          <span class="font-medium">Connections:</span>
+          <span class="text-gray-600 ml-1">Top 25% strongest co-occurrences</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-full bg-[#4a77b5]"></div>
+        <div>
+          <span class="font-medium">Core Entities:</span>
+          <span class="text-gray-600 ml-1">DC Gov, OCTO, USA (>100k mentions)</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -11,6 +44,14 @@ const chartContainer = ref(null)
 onMounted(async () => {
   const data = await fetch('/d3_data/entity_network.json').then(res => res.json())
   
+  // Sort links by value and get threshold for top 25%
+  const sortedValues = data.links.map(link => link.value).sort((a, b) => b - a)
+  const thresholdIndex = Math.floor(sortedValues.length * 0.25)
+  const threshold = sortedValues[thresholdIndex]
+  
+  // Filter links to only show top 25% strongest connections
+  data.links = data.links.filter(link => link.value >= threshold)
+
   const width = chartContainer.value.clientWidth
   const height = chartContainer.value.clientHeight
   const padding = 50 // Padding from container edges
@@ -47,7 +88,7 @@ onMounted(async () => {
     .selectAll('line')
     .data(data.links)
     .join('line')
-    .attr('stroke', '#ef4444')
+    .attr('stroke', 'var(--viz-secondary)')
     .attr('stroke-opacity', 0.2)
     .attr('stroke-width', d => Math.sqrt(d.value/10000)) // Adjusted link thickness
 
@@ -64,9 +105,10 @@ onMounted(async () => {
   // Add circles to nodes
   node.append('circle')
     .attr('r', d => sizeScale(d.size))
-    .attr('fill', '#ef4444')
-    .attr('stroke', '#fff')
+    .attr('fill', 'var(--viz-primary)')
+    .attr('stroke', 'white')
     .attr('stroke-width', 1.5)
+    .attr('opacity', 0.85)
 
   // Add labels with background
   const labels = node.append('g')

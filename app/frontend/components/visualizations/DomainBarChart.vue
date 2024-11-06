@@ -38,7 +38,8 @@ onMounted(async () => {
     .attr('x', 0)
     .attr('height', y.bandwidth())
     .attr('width', d => x(d.count))
-    .attr('fill', '#ef4444')
+    .attr('fill', 'var(--viz-primary)')
+    .attr('opacity', 0.9)
     .attr('rx', 4)
 
   svg.append('g')

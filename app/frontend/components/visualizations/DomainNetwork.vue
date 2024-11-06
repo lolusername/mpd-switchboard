@@ -49,9 +49,9 @@ onMounted(async () => {
 
   // Scale node sizes based on container size
   const maxSize = d3.max(data.nodes, d => d.size)
-  const sizeScale = d3.scaleSqrt()
+  const sizeScale = d3.scaleLinear()
     .domain([0, maxSize])
-    .range([20, Math.min(width, height) / 12])
+    .range([5, 30])
 
   // Modified simulation with adjusted forces
   const simulation = d3.forceSimulation(data.nodes)
@@ -69,8 +69,8 @@ onMounted(async () => {
     .selectAll('line')
     .data(data.links)
     .join('line')
-    .attr('stroke', '#ef4444')
-    .attr('stroke-opacity', 0.4)
+    .attr('stroke', 'var(--viz-secondary)')
+    .attr('stroke-opacity', 0.3)
     .attr('stroke-width', d => Math.sqrt(d.value))
 
   // Create node groups
@@ -86,9 +86,10 @@ onMounted(async () => {
   // Add circles to nodes
   node.append('circle')
     .attr('r', d => sizeScale(d.size))
-    .attr('fill', '#ef4444')
-    .attr('stroke', '#fff')
+    .attr('fill', 'var(--viz-primary)')
+    .attr('stroke', 'white')
     .attr('stroke-width', 2)
+    .attr('opacity', 0.9)
 
   // Add email count labels
   node.append('text')
