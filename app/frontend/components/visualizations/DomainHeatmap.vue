@@ -6,9 +6,9 @@
     <div class="flex flex-col gap-2 p-2 mt-1 bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex items-center gap-1.5">
         <div class="flex items-center gap-0.5">
-          <div class="w-2.5 h-2.5 rounded-full bg-[#2E8B57]"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-[#2E8B57]"></div>
-          <div class="w-4.5 h-4.5 rounded-full bg-[#2E8B57]"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-[var(--viz-secondary)]"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-[var(--viz-secondary)]"></div>
+          <div class="w-4.5 h-4.5 rounded-full bg-[var(--viz-secondary)]"></div>
         </div>
         <div class="whitespace-nowrap">
           <span class="font-medium">Domain Size:</span>
@@ -17,7 +17,7 @@
       </div>
       
       <div class="flex items-center gap-1.5">
-        <div class="w-6 h-[2px] bg-[#2E8B57]"></div>
+        <div class="w-6 h-[2px] bg-[var(--viz-secondary)]"></div>
         <div class="whitespace-nowrap">
           <span class="font-medium">Connections:</span>
           <span class="text-gray-600 ml-1">Email communication</span>
@@ -111,7 +111,7 @@ onMounted(async () => {
       })).filter(d => d.value > 0)
     ))
     .join('line')
-    .attr('stroke', '#2E8B57')
+    .attr('stroke', 'var(--viz-secondary)')
     .attr('stroke-opacity', 0.2)
     .attr('stroke-width', d => flowWidth(d.value))
 
@@ -127,9 +127,9 @@ onMounted(async () => {
   // Add circles to nodes
   nodes.append('circle')
     .attr('r', d => Math.sqrt(d.count) * 4)
-    .attr('fill', d => d.domain === 'dc.gov' ? '#2E8B57' : 'white')
+    .attr('fill', d => d.domain === 'dc.gov' ? 'var(--viz-secondary)' : 'white')
     .attr('fill-opacity', d => d.domain === 'dc.gov' ? 1 : 0.1)
-    .attr('stroke', '#2E8B57')
+    .attr('stroke', 'var(--viz-secondary)')
     .attr('stroke-width', 1)
 
   // Add count labels
@@ -138,7 +138,7 @@ onMounted(async () => {
     .attr('text-anchor', 'middle')
     .attr('dy', '.3em')
     .attr('font-size', '12px')
-    .attr('fill', d => d.domain === 'dc.gov' ? 'white' : '#2E8B57')
+    .attr('fill', d => d.domain === 'dc.gov' ? 'white' : 'var(--viz-secondary)')
 
   // Add domain labels
   nodes.append('text')

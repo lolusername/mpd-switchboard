@@ -12,12 +12,12 @@
     "frequency": 1
   },
   {
-    "connections": 1,
-    "frequency": 17
-  },
-  {
     "connections": 3,
     "frequency": 1
+  },
+  {
+    "connections": 1,
+    "frequency": 17
   },
   {
     "connections": 12,

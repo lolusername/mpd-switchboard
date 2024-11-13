@@ -1,35 +1,25 @@
 <template>
   <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[450px]"></div>
+    <div ref="chartContainer" class="h-[400px] mb-4"></div>
     
-    <!-- Legend -->
-    <div class="flex items-center justify-start gap-8 p-3 mt-auto bg-white rounded-lg text-xs border border-gray-100">
+    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100 max-h-[100px] overflow-y-auto">
       <div class="flex items-center gap-2">
-        <div class="flex items-center gap-1">
-          <div class="w-3 h-3 rounded-full bg-[#2E8B57]"></div>
-          <div class="w-4 h-4 rounded-full bg-[#2E8B57]"></div>
-          <div class="w-5 h-5 rounded-full bg-[#2E8B57]"></div>
+        <div class="flex items-center gap-1 shrink-0">
+          <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
+          <div class="w-4 h-4 rounded-full bg-[var(--viz-primary)]"></div>
+          <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)]"></div>
         </div>
-        <div>
-          <span class="font-medium">Entity Size:</span>
-          <span class="text-gray-600 ml-1">Mentions in email communications</span>
-        </div>
+        <span><span class="font-medium">Entity Size:</span> <span class="text-gray-600">Mentions in email communications</span></span>
       </div>
       
       <div class="flex items-center gap-2">
-        <div class="w-12 h-[2px] bg-[#2E8B57] opacity-20"></div>
-        <div>
-          <span class="font-medium">Connections:</span>
-          <span class="text-gray-600 ml-1">Top 25% strongest co-occurrences</span>
-        </div>
+        <div class="w-12 h-[2px] bg-[#2E8B57] opacity-20 shrink-0"></div>
+        <span><span class="font-medium">Connections:</span> <span class="text-gray-600">Top 25% strongest co-occurrences</span></span>
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-full bg-[#2E8B57]"></div>
-        <div>
-          <span class="font-medium">Core Entities:</span>
-          <span class="text-gray-600 ml-1">DC Gov, OCTO, USA (>100k mentions)</span>
-        </div>
+        <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)] shrink-0"></div>
+        <span><span class="font-medium">Core Entities:</span> <span class="text-gray-600">DC Gov, OCTO, USA (>100k mentions)</span></span>
       </div>
     </div>
   </div>
@@ -108,7 +98,6 @@ onMounted(async () => {
     .attr('fill', 'var(--viz-primary)')
     .attr('stroke', 'white')
     .attr('stroke-width', 1.5)
-    .attr('opacity', 0.85)
 
   // Add labels with background
   const labels = node.append('g')

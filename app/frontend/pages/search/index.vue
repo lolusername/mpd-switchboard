@@ -14,7 +14,7 @@
       </div>
 
       <!-- Search Input -->
-      <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
+      <div class="bg-white rounded-2xl border border-[var(--viz-primary)] p-6 mb-6 shadow-sm">
         <div class="relative">
           <input
             v-model="searchQuery"
@@ -26,7 +26,7 @@
           />
           <div class="absolute right-4 top-1/2 -translate-y-1/2">
             <div v-if="isLoading" class="animate-spin h-5 w-5 border-2 border-red-500 border-t-transparent rounded-full"></div>
-            <svg v-else class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <svg v-else class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="var(--viz-secondary)">
               <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </div>
@@ -63,7 +63,7 @@
         <!-- Results Panel -->
         <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-900">Search Results</h3>
+            <h3 class="text-sm font-medium text-[var(--viz-accent)]">Search Results</h3>
             <div class="flex items-center gap-2 text-xs text-gray-500">
               <span class="w-2 h-2 rounded-full bg-red-500"></span>
               <span>{{ searchResults.length }} matches</span>
@@ -77,7 +77,7 @@
               :key="result.file_name"
               class="p-4 bg-opacity-50 rounded-xl hover:bg-opacity-75 transition-colors cursor-pointer"
               :class="{ 'border-2': selectedResult === result }"
-              style="background: var(--pattern); border-color: var(--primary);"
+              style="background: var(--viz-background); border-color: var(--viz-accent);"
               @click="showFullContent(result)"
             >
               <h4 class="font-medium text-gray-900">{{ result.title || result.file_name }}</h4>
@@ -121,7 +121,7 @@
                   : 'bg-opacity-50 hover:bg-opacity-75'
               ]"
               :style="{
-                background: page === pagination.current_page ? 'var(--primary)' : 'var(--pattern)',
+                background: page === pagination.current_page ? 'var(--viz-secondary)' : '',
                 color: page === pagination.current_page ? 'white' : 'var(--neutral)'
               }"
             >
@@ -136,7 +136,7 @@
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-sm font-medium text-gray-900">Document View</h3>
               <div class="flex items-center gap-2 text-xs text-gray-500">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span class="w-2 h-2 rounded-full bg-[var(--viz-accent)]"></span>
                 <span>Selected Document</span>
               </div>
             </div>
