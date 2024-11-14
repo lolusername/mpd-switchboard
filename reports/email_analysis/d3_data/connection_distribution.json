@@ -1,39 +1,15 @@
 [
   {
-    "connections": 1494,
-    "frequency": 1
-  },
-  {
-    "connections": 746,
-    "frequency": 1
-  },
-  {
-    "connections": 44,
-    "frequency": 1
-  },
-  {
-    "connections": 1,
-    "frequency": 17
-  },
-  {
-    "connections": 3,
-    "frequency": 1
-  },
-  {
-    "connections": 12,
-    "frequency": 2
-  },
-  {
-    "connections": 2,
-    "frequency": 1
-  },
-  {
     "connections": 15,
     "frequency": 1
   },
   {
     "connections": 34,
     "frequency": 2
+  },
+  {
+    "connections": 1,
+    "frequency": 17
   },
   {
     "connections": 91,
@@ -60,7 +36,31 @@
     "frequency": 1
   },
   {
+    "connections": 12,
+    "frequency": 2
+  },
+  {
     "connections": 7,
+    "frequency": 1
+  },
+  {
+    "connections": 1494,
+    "frequency": 1
+  },
+  {
+    "connections": 746,
+    "frequency": 1
+  },
+  {
+    "connections": 44,
+    "frequency": 1
+  },
+  {
+    "connections": 3,
+    "frequency": 1
+  },
+  {
+    "connections": 2,
     "frequency": 1
   }
 ]
