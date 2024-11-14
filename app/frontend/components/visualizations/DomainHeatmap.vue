@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-[450px] flex flex-col">
+  <div class="relative w-full h-[500px] flex flex-col">
     <div ref="chartContainer" class="flex-1"></div>
     
     <!-- Legend and Description -->

@@ -1,20 +1,29 @@
 <template>
-  <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[400px] mb-4"></div>
+  <div class="relative w-full h-[500px] flex flex-col">
+    <div ref="chartContainer" class="flex-1"></div>
     
-    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
-        <span><span class="font-medium">Node Size:</span> <span class="text-gray-600">Number of documents containing this topic</span></span>
-      </div>
+    <!-- Legend -->
+    <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#9ca756]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Topic Node:</span>
+            <span class="text-gray-600 ml-1">Individual topic</span>
+          </div>
+        </div>
 
-      <div class="flex items-center gap-2">
-        <div class="w-12 h-[2px] bg-[var(--viz-secondary)] opacity-20 shrink-0"></div>
-        <span><span class="font-medium">Connections:</span> <span class="text-gray-600">Cosine similarity between topic word embeddings (>0.5)</span></span>
-      </div>
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-[2px] bg-[#9ca756]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Connection:</span>
+            <span class="text-gray-600 ml-1">Topic similarity strength</span>
+          </div>
+        </div>
 
-      <div class="text-gray-600 pt-1 border-t border-gray-100">
-        This network shows relationships between the 15 most frequent topics. Connected topics have similar word embeddings, with thicker lines indicating stronger semantic similarity between topics (minimum similarity threshold of 0.5).
+        <div class="text-gray-600 pt-2 border-t border-gray-100">
+          This network visualizes relationships between topics, where connections indicate similarity and node size represents topic frequency.
+        </div>
       </div>
     </div>
   </div>

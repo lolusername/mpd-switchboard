@@ -1,29 +1,41 @@
 <template>
-  <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[400px] mb-4"></div>
+  <div class="relative w-full h-[500px] flex flex-col">
+    <div ref="chartContainer" class="flex-1"></div>
     
-    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="flex items-center gap-1 shrink-0">
-          <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
-          <div class="w-4 h-4 rounded-full bg-[var(--viz-primary)]"></div>
-          <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)]"></div>
+    <!-- Legend -->
+    <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full bg-[#9ca756]"></div>
+            <div class="w-3 h-3 rounded-full bg-[#9ca756]"></div>
+            <div class="w-4 h-4 rounded-full bg-[#9ca756]"></div>
+          </div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Entity Size:</span>
+            <span class="text-gray-600 ml-1">Mentions in email communications</span>
+          </div>
         </div>
-        <span><span class="font-medium">Entity Size:</span> <span class="text-gray-600">Mentions in email communications</span></span>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <div class="w-12 h-[2px] bg-[#2E8B57] opacity-20 shrink-0"></div>
-        <span><span class="font-medium">Connections:</span> <span class="text-gray-600">Top 25% strongest co-occurrences</span></span>
-      </div>
 
-      <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)] shrink-0"></div>
-        <span><span class="font-medium">Core Entities:</span> <span class="text-gray-600">DC Gov, OCTO, USA (>100k mentions)</span></span>
-      </div>
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-[2px] bg-[#9ca756]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Connections:</span>
+            <span class="text-gray-600 ml-1">Top 25% strongest co-occurrences</span>
+          </div>
+        </div>
 
-      <div class="text-gray-600 pt-1 border-t border-gray-100">
-        This network shows how frequently different entities are mentioned together in emails. Larger circles indicate more mentions, while connecting lines show how often entities appear in the same emails. 
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#7e9dbf]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Core Entities:</span>
+            <span class="text-gray-600 ml-1">DC Gov, OCTO, USA (>100k mentions)</span>
+          </div>
+        </div>
+
+        <div class="text-gray-600 pt-2 border-t border-gray-100">
+          This network shows how frequently different entities are mentioned together in emails. Larger circles indicate more mentions, while connecting lines show how often entities appear in the same emails.
+        </div>
       </div>
     </div>
   </div>

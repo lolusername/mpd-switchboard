@@ -1,15 +1,21 @@
 <template>
-  <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[400px] mb-4"></div>
+  <div class="relative w-full h-[500px] flex flex-col">
+    <div ref="chartContainer" class="flex-1"></div>
     
-    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
-        <span><span class="font-medium">Points:</span> <span class="text-gray-600">Individual documents</span></span>
-      </div>
+    <!-- Legend -->
+    <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#9ca756]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Topic Group:</span>
+            <span class="text-gray-600 ml-1">Clusters of related topics</span>
+          </div>
+        </div>
 
-      <div class="text-gray-600 pt-1 border-t border-gray-100">
-        This visualization uses t-SNE to map high-dimensional topic data to 2D space. Clusters indicate groups of related topics, with distance showing topic similarity. Data redaction may affect the completeness of topic relationships shown.
+        <div class="text-gray-600 pt-2 border-t border-gray-100">
+          t-SNE visualization reveals topic relationships by positioning similar topics closer together in a 2D space.
+        </div>
       </div>
     </div>
   </div>

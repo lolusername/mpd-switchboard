@@ -1,15 +1,21 @@
 <template>
-  <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[400px] mb-4"></div>
+  <div class="relative w-full h-[500px] flex flex-col">
+    <div ref="chartContainer" class="flex-1"></div>
     
-    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
-        <span><span class="font-medium">Points:</span> <span class="text-gray-600">Individual documents</span></span>
-      </div>
+    <!-- Legend -->
+    <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#9ca756]"></div>
+          <div class="whitespace-nowrap">
+            <span class="font-medium">Topic Cluster:</span>
+            <span class="text-gray-600 ml-1">Groups of related topics</span>
+          </div>
+        </div>
 
-      <div class="text-gray-600 pt-1 border-t border-gray-100">
-        This visualization uses UMAP dimensionality reduction to show relationships between email topics. Similar topics appear closer together in the visualization. Due to data redaction, some topic relationships may not be fully represented.
+        <div class="text-gray-600 pt-2 border-t border-gray-100">
+          UMAP visualization shows topic clusters in a reduced dimensional space, where similar topics appear closer together.
+        </div>
       </div>
     </div>
   </div>
