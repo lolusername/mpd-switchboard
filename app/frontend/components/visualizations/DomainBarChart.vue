@@ -1,6 +1,17 @@
 <template>
-  <div class="domain-bar-chart w-full h-full">
-    <div ref="chartContainer" class="h-full"></div>
+  <div class="relative w-full h-full flex flex-col">
+    <div ref="chartContainer" class="h-[400px] mb-4"></div>
+    
+    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 bg-[var(--viz-primary)]"></div>
+        <span><span class="font-medium">Bar Height:</span> <span class="text-gray-600">Total emails from domain</span></span>
+      </div>
+
+      <div class="text-gray-600 pt-1 border-t border-gray-100">
+        This chart shows the distribution of email volume across different domains. Each bar represents a unique email domain, with height indicating total number of emails. Note that due to data redaction, some domains may be underrepresented.
+      </div>
+    </div>
   </div>
 </template>
 

@@ -1,6 +1,6 @@
 <template>
   <div class="relative w-full h-full flex flex-col">
-    <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap</h3>
+    <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap!!</h3>
     <div ref="chartContainer" class="h-[300px] bg-blue-50 rounded-lg"></div>
     
     <!-- Legend -->

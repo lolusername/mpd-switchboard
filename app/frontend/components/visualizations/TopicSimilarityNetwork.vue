@@ -4,26 +4,17 @@
     
     <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex items-center gap-2">
-        <div class="flex items-center gap-1 shrink-0">
-          <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
-          <div class="w-4 h-4 rounded-full bg-[var(--viz-primary)]"></div>
-          <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)]"></div>
-        </div>
-        <span><span class="font-medium">Entity Size:</span> <span class="text-gray-600">Mentions in email communications</span></span>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <div class="w-12 h-[2px] bg-[#2E8B57] opacity-20 shrink-0"></div>
-        <span><span class="font-medium">Connections:</span> <span class="text-gray-600">Top 25% strongest co-occurrences</span></span>
+        <div class="w-3 h-3 rounded-full bg-[var(--viz-primary)]"></div>
+        <span><span class="font-medium">Node Size:</span> <span class="text-gray-600">Number of documents containing this topic</span></span>
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-full bg-[var(--viz-primary)] shrink-0"></div>
-        <span><span class="font-medium">Core Entities:</span> <span class="text-gray-600">DC Gov, OCTO, USA (>100k mentions)</span></span>
+        <div class="w-12 h-[2px] bg-[var(--viz-secondary)] opacity-20 shrink-0"></div>
+        <span><span class="font-medium">Connections:</span> <span class="text-gray-600">Cosine similarity between topic word embeddings (>0.5)</span></span>
       </div>
 
       <div class="text-gray-600 pt-1 border-t border-gray-100">
-        This network shows how frequently different entities are mentioned together in emails. Larger circles indicate more mentions, while connecting lines show how often entities appear in the same emails. 
+        This network shows relationships between the 15 most frequent topics. Connected topics have similar word embeddings, with thicker lines indicating stronger semantic similarity between topics (minimum similarity threshold of 0.5).
       </div>
     </div>
   </div>
@@ -36,15 +27,59 @@ import * as d3 from 'd3'
 const chartContainer = ref(null)
 
 onMounted(async () => {
-  const data = await fetch('/d3_data/entity_network.json').then(res => res.json())
+  // Fetch both data sources in parallel
+  const [similarityData, topicInfo] = await Promise.all([
+    fetch('/d3_data/topic_similarity_analysis.json').then(res => res.json()),
+    fetch('/d3_data/topic_info_analysis.json').then(res => res.json())
+  ])
   
-  // Sort links by value and get threshold for top 25%
-  const sortedValues = data.links.map(link => link.value).sort((a, b) => b - a)
-  const thresholdIndex = Math.floor(sortedValues.length * 0.25)
-  const threshold = sortedValues[thresholdIndex]
+  // Create maps for topic counts and names
+  const topicCounts = new Map(
+    topicInfo.map(t => [t.Topic.toString(), t.Count])
+  )
+  const topicNames = new Map(
+    topicInfo.map(t => [t.Topic.toString(), t.Name])
+  )
   
-  // Filter links to only show top 25% strongest connections
-  data.links = data.links.filter(link => link.value >= threshold)
+  // Add counts and names to nodes
+  similarityData.nodes.forEach(node => {
+    node.size = topicCounts.get(node.id) || 0
+    node.label = topicNames.get(node.id) || node.id
+  })
+  
+  // Sort by actual frequency and take top 15
+  const topNodes = similarityData.nodes
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 15)
+  
+  // Get IDs of top 15 nodes
+  const topNodeIds = new Set(topNodes.map(n => n.id))
+
+  // Debug logging
+  console.log('Top Node IDs:', Array.from(topNodeIds))
+
+  // Filter links to only include connections between top 15 nodes
+  const filteredLinks = similarityData.links.filter(link => {
+    // Check if source and target nodes are in our top 15
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target
+    
+    return topNodeIds.has(sourceId) && 
+           topNodeIds.has(targetId) && 
+           link.value > 0.50  // Only keep connections with similarity > 0.5
+  })
+
+  console.log('Filtered Links:', filteredLinks)
+
+  // After filtering links
+  console.log('Number of filtered links:', filteredLinks.length)
+  console.log('Sample filtered link:', filteredLinks[0])
+
+  // Update data object with filtered nodes and links
+  const data = {
+    nodes: topNodes,
+    links: filteredLinks
+  }
 
   const width = chartContainer.value.clientWidth
   const height = chartContainer.value.clientHeight
@@ -70,9 +105,9 @@ onMounted(async () => {
   const simulation = d3.forceSimulation(data.nodes)
     .force('link', d3.forceLink(data.links)
       .id(d => d.id)
-      .distance(d => sizeScale(d.source.size) + sizeScale(d.target.size) + 60)) // Dynamic distance based on node sizes
+      .distance(d => sizeScale(d.source.size) + sizeScale(d.target.size) + 60))
     .force('charge', d3.forceManyBody().strength(-200))
-    .force('collision', d3.forceCollide().radius(d => sizeScale(d.size) + 30)) // Add padding between nodes
+    .force('collision', d3.forceCollide().radius(d => sizeScale(d.size) + 30))
     .force('center', d3.forceCenter(0, 0))
     .force('x', d3.forceX().strength(0.1))
     .force('y', d3.forceY().strength(0.1))
@@ -84,7 +119,7 @@ onMounted(async () => {
     .join('line')
     .attr('stroke', 'var(--viz-secondary)')
     .attr('stroke-opacity', 0.2)
-    .attr('stroke-width', d => Math.sqrt(d.value/10000)) // Adjusted link thickness
+    .attr('stroke-width', d => d.value * 5)
 
   // Create node groups
   const node = svg.append('g')
@@ -109,7 +144,7 @@ onMounted(async () => {
 
   // Add white background for labels
   labels.append('text')
-    .text(d => d.id)
+    .text(d => d.label)
     .attr('text-anchor', 'middle')
     .attr('dy', d => sizeScale(d.size) + 15)
     .attr('fill', '#1f2937')
@@ -121,7 +156,7 @@ onMounted(async () => {
 
   // Add text over background
   labels.append('text')
-    .text(d => d.id)
+    .text(d => d.label)
     .attr('text-anchor', 'middle')
     .attr('dy', d => sizeScale(d.size) + 15)
     .attr('fill', '#1f2937')
@@ -130,11 +165,10 @@ onMounted(async () => {
 
   // Add tooltips
   node.append('title')
-    .text(d => `${d.id}\nSize: ${d.size}`)
+    .text(d => `${d.label}\nSize: ${d.size}`)
 
   // Update positions on simulation tick
   simulation.on('tick', () => {
-    // Constrain nodes to container
     node.attr('transform', d => {
       d.x = Math.max(-width/2 + padding, Math.min(width/2 - padding, d.x))
       d.y = Math.max(-height/2 + padding, Math.min(height/2 - padding, d.y))

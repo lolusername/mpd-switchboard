@@ -1,47 +1,53 @@
 <template>
-  <div class="relative w-full h-full flex flex-col">
-    <div ref="chartContainer" class="h-[calc(100%-80px)] rounded-lg"></div>
+  <div class="relative w-full h-[450px] flex flex-col">
+    <div ref="chartContainer" class="flex-1"></div>
     
-    <!-- Vertical legend -->
-    <div class="flex flex-col gap-2 p-2 mt-1 bg-white rounded-lg text-xs border border-gray-100">
-      <div class="flex items-center gap-1.5">
-        <div class="flex items-center gap-0.5">
-          <div class="w-2.5 h-2.5 rounded-full bg-[var(--viz-secondary)]"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-[var(--viz-secondary)]"></div>
-          <div class="w-4.5 h-4.5 rounded-full bg-[var(--viz-secondary)]"></div>
-        </div>
+    <!-- Legend and Description -->
+    <div class="flex flex-col gap-3 p-3 bg-white rounded-lg text-xs border border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-[2px] bg-[#003366]"></div>
         <div class="whitespace-nowrap">
-          <span class="font-medium">Domain Size:</span>
-          <span class="text-gray-600 ml-1">Emails in domain</span>
+          <span class="font-medium">Email Flow:</span>
+          <span class="text-gray-600 ml-1">Direction and volume</span>
         </div>
       </div>
-      
-      <div class="flex items-center gap-1.5">
-        <div class="w-6 h-[2px] bg-[var(--viz-secondary)]"></div>
+
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 rounded bg-[#7e9dbf]"></div>
         <div class="whitespace-nowrap">
-          <span class="font-medium">Connections:</span>
-          <span class="text-gray-600 ml-1">Email communication</span>
+          <span class="font-medium">Domain:</span>
+          <span class="text-gray-600 ml-1">Email domain and statistics</span>
         </div>
+      </div>
+
+      <div class="text-gray-600 pt-1 border-t border-gray-100">
+        This visualization shows email communication patterns between domains and dc.gov. Arrow thickness indicates volume of emails sent. Note that due to data redaction, only a subset of communications is shown which may impact the overall pattern visibility.
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
 
 const chartContainer = ref(null)
+let resizeObserver = null
 
-onMounted(async () => {
-  // Get connection data
-  const connectionData = await fetch('/d3_data/domain_heatmap.json').then(res => res.json())
+// Remove getDomainType and getDomainColor helpers and replace with simple color
+const DOMAIN_COLOR = '#7e9dbf'
+
+const drawChart = async () => {
+  if (!chartContainer.value) return
+
+  // Get all data
+  const [connectionData, domainStats] = await Promise.all([
+    fetch('/d3_data/domain_heatmap.json').then(res => res.json()),
+    fetch('/d3_data/domain_bar_chart.json').then(res => res.json())
+  ])
   
-  // Get domain stats
-  let domainStats = await fetch('/d3_data/domain_bar_chart.json').then(res => res.json())
-  
-  // Fix all .corn domains to .com and deduplicate in one step
-  domainStats = Array.from(new Map(
+  // Simplified domain mapping without type
+  const domains = Array.from(new Map(
     domainStats.map(node => [
       node.domain.replace('.corn', '.com'),
       {
@@ -51,17 +57,24 @@ onMounted(async () => {
     ])
   ).values())
 
-  // Also fix domains in the connection matrix
-  connectionData.domains = connectionData.domains.map(domain => domain.replace('.corn', '.com'))
+  // Extract connections
+  const connections = connectionData.matrix.flatMap((row, i) => 
+    row.map((value, j) => ({
+      source: connectionData.domains[i],
+      target: connectionData.domains[j],
+      value: value
+    })).filter(d => d.value > 0)
+  )
 
-  // Now use connectionData.matrix for the links and domainStats for the nodes
+  // Calculate total emails for percentage
+  const totalEmails = connections.reduce((sum, conn) => sum + conn.value, 0)
 
-  // Set up dimensions
+  // Set up dimensions based on container
+  const containerWidth = chartContainer.value.clientWidth
+  const containerHeight = chartContainer.value.clientHeight
   const margin = { top: 20, right: 20, bottom: 20, left: 20 }
-  const width = chartContainer.value.clientWidth - margin.left - margin.right
-  const height = 350 - margin.top - margin.bottom
-  const centerX = width / 2
-  const centerY = height / 2
+  const width = containerWidth - margin.left - margin.right
+  const height = containerHeight - margin.top - margin.bottom
 
   // Clear existing
   d3.select(chartContainer.value).selectAll('*').remove()
@@ -73,107 +86,130 @@ onMounted(async () => {
     .append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`)
 
-  // Create scales
-  const size = d3.scaleSqrt()
-    .domain([0, d3.max(domainStats, d => d.count)])
-    .range([4, 30])
+  // Create arrow marker
+  svg.append('defs').append('marker')
+    .attr('id', 'arrowhead')
+    .attr('viewBox', '-10 -5 10 10')
+    .attr('refX', -2)
+    .attr('refY', 0)
+    .attr('markerWidth', 12)
+    .attr('markerHeight', 12)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M -10,-5 L 0,0 L -10,5 Z')
+    .attr('fill', '#003366')
 
-  const flowWidth = d3.scaleLinear()
-    .domain([0, d3.max(connectionData.matrix.flat())])
-    .range([2, 20])
+  // Calculate responsive dimensions
+  const centerX = width / 2
+  const centerY = height / 2
+  const boxWidth = Math.min(140, width * 0.2)
+  const boxHeight = Math.min(80, height * 0.25)
+  const senderSpacing = Math.min(300, width * 0.35)
 
-  // Adjust force simulation to radiate from center
-  const simulation = d3.forceSimulation(domainStats)
-    .force('charge', d3.forceManyBody().strength(-200)) // Reduced strength for less repulsion
-    .force('center', d3.forceCenter(centerX, centerY))
-    .force('collision', d3.forceCollide().radius(45)) // Fixed radius for more even spacing
-    .force('radial', d3.forceRadial(120, centerX, centerY).strength(0.6)) // Adjusted radius and strength for better circle
-    .on('tick', ticked)
+  // Draw dc.gov box
+  const dcGovStats = domains.find(d => d.domain === 'dc.gov')
+  svg.append('rect')
+    .attr('x', centerX - boxWidth/2)
+    .attr('y', centerY - boxHeight/2)
+    .attr('width', boxWidth)
+    .attr('height', boxHeight)
+    .attr('fill', DOMAIN_COLOR)
+    .attr('rx', 4)
 
-  // Keep dc.gov fixed in center but let others move
-  domainStats.forEach(node => {
-    if (node.domain === 'dc.gov') {
-      node.fx = centerX
-      node.fy = centerY
-    } else {
-      node.fx = null
-      node.fy = null
+  // DC.gov label and stats
+  svg.append('text')
+    .attr('x', centerX)
+    .attr('y', centerY - boxHeight/4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#003366')
+    .attr('font-size', '16px')
+    .text('dc.gov')
+
+  svg.append('text')
+    .attr('x', centerX)
+    .attr('y', centerY + boxHeight/4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#F5F5F5')
+    .attr('font-size', '12px')
+    .text(`${dcGovStats?.count || 0} internal emails`)
+
+  // Draw connections
+  connections.forEach((conn, i) => {
+    if (conn.target === 'dc.gov' && conn.source !== 'dc.gov') {
+      const x = centerX + (i === 0 ? -senderSpacing : senderSpacing)
+      const domainStats = domains.find(d => d.domain === conn.source)
+      
+      // Sender box
+      svg.append('rect')
+        .attr('x', x - boxWidth/2)
+        .attr('y', centerY - boxHeight/2)
+        .attr('width', boxWidth)
+        .attr('height', boxHeight)
+        .attr('fill', '#F5F5F5')
+        .attr('stroke', DOMAIN_COLOR)
+        .attr('stroke-width', 2)
+        .attr('rx', 4)
+
+      // Domain info
+      svg.append('text')
+        .attr('x', x)
+        .attr('y', centerY - boxHeight/4)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#003366')
+        .attr('font-size', '14px')
+        .text(conn.source)
+
+      svg.append('text')
+        .attr('x', x)
+        .attr('y', centerY)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#6B7280')
+        .attr('font-size', '12px')
+        .text(`${conn.value} emails sent`)
+
+      svg.append('text')
+        .attr('x', x)
+        .attr('y', centerY + boxHeight/4)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#6B7280')
+        .attr('font-size', '12px')
+        .text(`${domainStats?.count || 0} total`)
+
+      // Connection arrow
+      const arrowWidth = d3.scaleLinear()
+        .domain([1, 25])
+        .range([1, 4])(conn.value)
+
+      // Calculate start and end points with consistent spacing
+      const spacing = 20  // Consistent spacing from boxes
+      const startX = x + (i === 0 ? boxWidth/2 + spacing : -boxWidth/2 - spacing)
+      const endX = centerX + (i === 0 ? -boxWidth/2 - spacing : boxWidth/2 + spacing)
+
+      svg.append('line')
+        .attr('x1', startX)
+        .attr('y1', centerY)
+        .attr('x2', endX)
+        .attr('y2', centerY)
+        .attr('stroke', '#003366')
+        .attr('stroke-width', arrowWidth)
+        .attr('marker-end', 'url(#arrowhead)')
+      
     }
   })
+}
 
-  // Add links
-  const links = svg.selectAll('line')
-    .data(connectionData.matrix.flatMap((row, i) => 
-      row.map((value, j) => ({
-        source: domainStats[i],
-        target: domainStats[j],
-        value: value
-      })).filter(d => d.value > 0)
-    ))
-    .join('line')
-    .attr('stroke', 'var(--viz-secondary)')
-    .attr('stroke-opacity', 0.2)
-    .attr('stroke-width', d => flowWidth(d.value))
+// Handle resize
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    drawChart()
+  })
+  resizeObserver.observe(chartContainer.value)
+  drawChart()
+})
 
-  // Add nodes
-  const nodes = svg.selectAll('g')
-    .data(domainStats)
-    .join('g')
-    .call(d3.drag()
-      .on('start', dragstarted)
-      .on('drag', dragged)
-      .on('end', dragended))
-
-  // Add circles to nodes
-  nodes.append('circle')
-    .attr('r', d => Math.sqrt(d.count) * 4)
-    .attr('fill', d => d.domain === 'dc.gov' ? 'var(--viz-secondary)' : 'white')
-    .attr('fill-opacity', d => d.domain === 'dc.gov' ? 1 : 0.1)
-    .attr('stroke', 'var(--viz-secondary)')
-    .attr('stroke-width', 1)
-
-  // Add count labels
-  nodes.append('text')
-    .text(d => d.count)
-    .attr('text-anchor', 'middle')
-    .attr('dy', '.3em')
-    .attr('font-size', '12px')
-    .attr('fill', d => d.domain === 'dc.gov' ? 'white' : 'var(--viz-secondary)')
-
-  // Add domain labels
-  nodes.append('text')
-    .text(d => d.domain)
-    .attr('text-anchor', 'middle')
-    .attr('dy', d => Math.sqrt(d.count) * 4 + 20)
-    .attr('font-size', '12px')
-    .attr('fill', '#666')
-
-  function ticked() {
-    links
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y)
-
-    nodes
-      .attr('transform', d => `translate(${d.x},${d.y})`)
-  }
-
-  function dragstarted(event) {
-    if (!event.active) simulation.alphaTarget(0.3).restart()
-    event.subject.fx = event.subject.x
-    event.subject.fy = event.subject.y
-  }
-
-  function dragged(event) {
-    event.subject.fx = event.x
-    event.subject.fy = event.y
-  }
-
-  function dragended(event) {
-    if (!event.active) simulation.alphaTarget(0)
-    event.subject.fx = null
-    event.subject.fy = null
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
   }
 })
 </script>

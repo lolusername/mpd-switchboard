@@ -64,13 +64,27 @@
           <h3 class="text-sm font-medium text-gray-900 mb-4">Entity Relationship Network</h3>
           <EntityNetwork />
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2 ">
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap</h3>
           <DomainHeatmap />
         </div>
         <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Email Domain Distribution</h3>
-          <DomainBarChart  />
+          <DomainBarChart />
+        </div>
+        
+        <!-- New Topic Visualizations -->
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2">
+          <h3 class="text-sm font-medium text-gray-900 mb-4">Topic UMAP Analysis</h3>
+          <TopicUMAP />
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2">
+          <h3 class="text-sm font-medium text-gray-900 mb-4">Topic t-SNE Analysis</h3>
+          <TopicTSNE />
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 col-span-2">
+          <h3 class="text-sm font-medium text-gray-900 mb-4">Topic Similarity Network</h3>
+          <TopicSimilarityNetwork />
         </div>
       </div>
     </div>
@@ -83,6 +97,9 @@ import { useEmailStats } from '~/composables/useEmailStats'
 import DomainBarChart from '~/components/visualizations/DomainBarChart.vue'
 import DomainHeatmap from '~/components/visualizations/DomainHeatmap.vue'
 import EntityNetwork from '~/components/visualizations/EntityNetwork.vue'
+import TopicUMAP from '~/components/visualizations/TopicUMAP.vue'
+import TopicTSNE from '~/components/visualizations/TopicTSNE.vue'
+import TopicSimilarityNetwork from '~/components/visualizations/TopicSimilarityNetwork.vue'
 import Sidebar from '~/components/Sidebar.vue'
 
 const { fetchData, stats } = useEmailStats()
