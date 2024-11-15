@@ -6,7 +6,7 @@
     <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-[#9ca756]"></div>
+          <div class="w-3 h-3 bg-[var(--viz-bar)]"></div>
           <div class="whitespace-nowrap">
             <span class="font-medium">Email Count:</span>
             <span class="text-gray-600 ml-1">Number of emails per domain</span>

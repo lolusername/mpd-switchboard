@@ -8,28 +8,30 @@
       <!-- Header -->
       <div class="flex justify-between items-start mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Search Email Documents</h1>
-          <p class="text-gray-500 mt-1">search across {{ pagination?.total_documents?.toLocaleString() || 'all' }} documents</p>
+          <h1 class="text-2xl font-bold">Search Email Documents</h1>
         </div>
       </div>
 
       <!-- Search Input -->
       <div class="bg-white rounded-2xl border border-[var(--viz-primary)] p-6 mb-6 shadow-sm">
-        <div class="relative">
+        <div class="relative flex gap-2">
           <input
             v-model="searchQuery"
             placeholder="Search across all email documents..."
-            class="w-full p-4 pr-12 bg-opacity-50 border-none rounded-xl focus:ring-2 transition-all"
+            class="flex-1 p-4 pr-12 bg-opacity-50 border-none rounded-xl focus:ring-2 transition-all"
             :class="[isLoading ? 'opacity-75' : '']"
             style="background: var(--pattern); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);"
             :disabled="isLoading"
+            @keyup.enter="handleSearch(1)"
           />
-          <div class="absolute right-4 top-1/2 -translate-y-1/2">
-            <div v-if="isLoading" class="animate-spin h-5 w-5 border-2 border-red-500 border-t-transparent rounded-full"></div>
-            <svg v-else class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="var(--viz-secondary)">
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
+          <button
+            @click="handleSearch(1)"
+            :disabled="isLoading || searchQuery.length < 3"
+            class="font-mono uppercase px-6 py-2 bg-[var(--viz-primary)] text-white rounded-xl hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div v-if="isLoading" class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+            <span v-else>Search</span>
+          </button>
         </div>
       </div>
 
@@ -66,7 +68,13 @@
             <h3 class="text-sm font-medium text-[var(--viz-accent)]">Search Results</h3>
             <div class="flex items-center gap-2 text-xs text-gray-500">
               <span class="w-2 h-2 rounded-full bg-red-500"></span>
-              <span>{{ searchResults.length }} matches</span>
+              <span>
+                {{ 
+                  pagination?.total_documents 
+                    ? `${((pagination.current_page - 1) * 50) + 1}-${Math.min(pagination.current_page * 50, pagination.total_documents)} of ${pagination.total_documents.toLocaleString()} matches`
+                    : '0 matches'
+                }}
+              </span>
             </div>
           </div>
 
@@ -179,8 +187,6 @@
   // Methods
   const handleSearch = async (page = 1) => {
     if (searchQuery.value.length < 3) {
-      searchResults.value = []
-      pagination.value = null
       return
     }
   
@@ -188,12 +194,23 @@
     try {
       const response = await $fetch('http://localhost:8000/search', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
         body: {
           query: searchQuery.value,
-          page,
-          size: 50
+          page
         }
       })
+      
+      // Handle empty or invalid responses
+      if (!response || !response.pagination) {
+        searchResults.value = []
+        pagination.value = null
+        return
+      }
       
       searchResults.value = response.results
       pagination.value = response.pagination
@@ -207,7 +224,7 @@
   }
   
   const getPageNumbers = () => {
-    if (!pagination.value) return []
+    if (!pagination.value || !pagination.value.total_pages) return []
     const total = pagination.value.total_pages
     const current = pagination.value.current_page
     
@@ -221,14 +238,6 @@
   
   const showFullContent = (result) => {
     selectedResult.value = result
-  }
-  
-  const hideFullContent = () => {
-    // Remove this method since we don't need it anymore
-    // Or if you want to keep it for other functionality:
-    // if (!pinnedDocs.value.includes(selectedResult.value)) {
-    //   selectedResult.value = null
-    // }
   }
   
   const isPinned = (doc) => {
@@ -261,23 +270,11 @@
   }
   
   const changePage = (page) => {
-    if (typeof page === 'number' && page !== pagination.value?.current_page) {
+    if (typeof page === 'number' && 
+        page !== pagination.value?.current_page && 
+        page > 0 && 
+        page <= pagination.value?.total_pages) {
       handleSearch(page)
-    }
-  }
-  
-  // Debounced search
-  const debouncedSearch = useDebounce(() => handleSearch(1), 300)
-  
-  watch(searchQuery, () => {
-    debouncedSearch()
-  })
-  
-  function useDebounce(fn, delay) {
-    let timeout
-    return function (...args) {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => fn(...args), delay)
     }
   }
   

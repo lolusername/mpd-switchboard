@@ -1,23 +1,46 @@
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel
 import os
 from urllib.parse import unquote
 
-
-
+# Create the FastAPI app
 app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
+# Custom middleware to ensure CORS headers are always sent
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
+# Error handling middleware
+@app.middleware("http")
+async def catch_exceptions(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        print(f"Error caught in middleware: {str(e)}")
+        return JSONResponse(
+            status_code=500,  # Return 200 even for errors to avoid CORS issues
+            content={"error": str(e)}
+        )
+
+# Standard CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
 # Initialize Elasticsearch client
 es = Elasticsearch(["http://elasticsearch:9200"])
 
@@ -27,7 +50,7 @@ PDF_DIRECTORY = os.environ.get('PDF_DIRECTORY', '/app/pdf_data')
 class SearchQuery(BaseModel):
     query: str
     page: int = 1
-    size: int = 50  # Default to 50 results per page
+    size: int = 50  # We'll keep this but ignore it from the request
 
 @app.get("/")
 async def root():
@@ -36,9 +59,55 @@ async def root():
 @app.post("/search")
 async def search_pdfs(search_query: SearchQuery):
     try:
-        # Calculate offset
-        from_idx = (search_query.page - 1) * search_query.size
-
+        page_size = 50
+        current_page = max(1, search_query.page)
+        
+        # First get total count with same query as search
+        count_result = es.count(
+            index="pdf_documents",
+            body={
+                "query": {
+                    "multi_match": {
+                        "query": search_query.query,
+                        "fields": ["content"],
+                        "operator": "or",
+                        "minimum_should_match": "75%"
+                    }
+                }
+            }
+        )
+        
+        total_docs = count_result['count']
+        print(f"Total matching documents: {total_docs}")
+        
+        if total_docs == 0:
+            return {
+                "pagination": {
+                    "current_page": 1,
+                    "total_pages": 1,
+                    "page_size": page_size,
+                    "total_documents": 0,
+                    "returned_documents": 0
+                },
+                "results": []
+            }
+        
+        # Calculate total pages based on actual matching documents
+        total_pages = (total_docs + page_size - 1) // page_size
+        
+        # Ensure current page is within bounds
+        current_page = min(max(1, current_page), total_pages)
+        
+        # Calculate from_idx based on actual available documents
+        from_idx = (current_page - 1) * page_size
+        
+        # Calculate actual size for this page
+        remaining_docs = total_docs - from_idx
+        current_page_size = min(page_size, remaining_docs)
+        
+        print(f"Debug - Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Total: {total_docs}")
+        
+        # Search with fixed size
         result = es.search(
             index="pdf_documents",
             body={
@@ -46,46 +115,51 @@ async def search_pdfs(search_query: SearchQuery):
                     "multi_match": {
                         "query": search_query.query,
                         "fields": ["title", "content"],
+                        "operator": "or",
                         "minimum_should_match": "75%"
                     }
                 },
                 "highlight": {
                     "fields": {
-                        "title": {},
-                        "content": {}
+                        "title": {"number_of_fragments": 0},
+                        "content": {
+                            "number_of_fragments": 3, 
+                            "fragment_size": 150,
+                            "max_analyzed_offset": 1000000
+                        }
                     }
                 },
-                "min_score": 0.5,
                 "from": from_idx,
-                "size": search_query.size
+                "size": current_page_size,
+                "track_total_hits": True
             }
         )
         
-        total_docs = result['hits']['total']['value']
         hits = result['hits']['hits']
-        total_pages = (total_docs + search_query.size - 1) // search_query.size
+        
+        # Add debug logging
+        print(f"Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Hits: {len(hits)}")
         
         return {
             "pagination": {
-                "current_page": search_query.page,
+                "current_page": current_page,
                 "total_pages": total_pages,
-                "page_size": search_query.size,
+                "page_size": current_page_size,
                 "total_documents": total_docs,
                 "returned_documents": len(hits)
             },
             "results": [{
-                "title": hit["_source"]["title"],
-                "content": hit["_source"]["content"],
-                "file_name": os.path.basename(hit["_source"]["file_path"]),
-                "file_url": hit["_source"]["file_path"],
+                "title": hit["_source"].get("title", ""),
+                "content": hit["_source"].get("content", ""),
+                "file_name": os.path.basename(hit["_source"].get("file_path", "")),
+                "file_url": hit["_source"].get("file_path", ""),
                 "highlights": hit.get("highlight", {}),
                 "score": hit["_score"]
             } for hit in hits]
         }
-        
     except Exception as e:
-        logger.error(f"Search error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Search error details: {str(e)}")  # More detailed error logging
+        raise  # Re-raise the exception to see the actual error
 
 @app.get("/health")
 async def health_check():
@@ -125,3 +199,17 @@ async def check_pdf_directory():
         }
     else:
         return {"status": "Directory not found", "path": PDF_DIRECTORY}
+
+@app.get("/index-stats")
+async def get_index_stats():
+    try:
+        stats = es.indices.stats(index="pdf_documents")
+        count = es.count(index="pdf_documents")
+        return {
+            "total_docs": count["count"],
+            "index_stats": stats["_all"]["total"],
+            "exists": es.indices.exists(index="pdf_documents")
+        }
+    except Exception as e:
+        print(f"Stats error: {e}")
+        return {"error": str(e)}

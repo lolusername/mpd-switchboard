@@ -65,7 +65,7 @@
           <EntityNetwork />
         </div>
         <div class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
-          <h3 class="text-sm font-medium text-gray-900 mb-4">Domain Communication Heatmap</h3>
+          <h3 class="text-sm font-medium text-gray-900 mb-4">Email Domain Communication Flow</h3>
           <DomainHeatmap />
         </div>
         <div class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
