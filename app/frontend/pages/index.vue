@@ -74,15 +74,15 @@
         </div>
         
         <!-- Topic Visualizations -->
-        <div class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
+        <div v-if="showDebugViz" class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Topic UMAP Analysis</h3>
           <TopicUMAP />
         </div>
-        <div class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
+        <div v-if="showDebugViz" class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Topic t-SNE Analysis</h3>
           <TopicTSNE />
         </div>
-        <div class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
+        <div v-if="showDebugViz" class="bg-white rounded border border-gray-100 p-4 md:p-6 col-span-1 md:col-span-2">
           <h3 class="text-sm font-medium text-gray-900 mb-4">Topic Similarity Network</h3>
           <TopicSimilarityNetwork />
         </div>
@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref, onUnmounted } from 'vue'
 import { useEmailStats } from '~/composables/useEmailStats'
 import DomainBarChart from '~/components/visualizations/DomainBarChart.vue'
 import DomainHeatmap from '~/components/visualizations/DomainHeatmap.vue'
@@ -104,8 +104,21 @@ import Sidebar from '~/components/Sidebar.vue'
 
 const { fetchData, stats } = useEmailStats()
 
+const showDebugViz = ref(false)
+
+const handleKeyDown = (e) => {
+  if (e.shiftKey && e.key.toLowerCase() === 'd') {
+    showDebugViz.value = !showDebugViz.value
+  }
+}
+
 onMounted(() => {
   fetchData()
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 

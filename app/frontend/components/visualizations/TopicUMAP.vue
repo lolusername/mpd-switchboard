@@ -1,6 +1,7 @@
 <template>
   <div class="relative w-full h-[500px] flex flex-col">
-    <div ref="chartContainer" class="flex-1"></div>
+    <LoadingSpinner v-if="isLoading" />
+    <div ref="chartContainer" class="flex-1" :class="{ 'opacity-0': isLoading }"></div>
     
     <!-- Legend -->
     <div class="mt-4 p-4 bg-white rounded-lg text-xs border border-gray-100">
@@ -24,11 +25,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import * as d3 from 'd3'
+import LoadingSpinner from '../common/LoadingSpinner.vue'
 
 const chartContainer = ref(null)
+const isLoading = ref(true)
 
 onMounted(async () => {
-  // Use requestIdleCallback for non-critical initialization
+  isLoading.value = true
   window.requestIdleCallback(async () => {
     try {
       // Parallel data fetching
@@ -158,6 +161,8 @@ onMounted(async () => {
         .call(yAxis)
     } catch (error) {
       console.error('Error loading data:', error)
+    } finally {
+      isLoading.value = false
     }
   })
 })
