@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, helpers
 from pydantic import BaseModel
 import os
 from urllib.parse import unquote
+from typing import List
+import time
 
 # Create the FastAPI app
 app = FastAPI()
@@ -41,8 +43,68 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Initialize Elasticsearch client
-es = Elasticsearch(["http://elasticsearch:9200"])
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://3.83.115.156:3000"],  # Add localhost
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize Elasticsearch client with better error handling and retry logic
+es = None  # Initialize es as None first
+
+def init_elasticsearch():
+    global es
+    for i in range(3):  # Retry 3 times
+        try:
+            es = Elasticsearch(
+                ["http://elasticsearch:9200"],
+                retry_on_timeout=True,
+                max_retries=3,
+                request_timeout=30
+            )
+            
+            # Test connection
+            if not es.ping():
+                raise Exception("Cannot ping Elasticsearch")
+                
+            # Wait for yellow status
+            health = es.cluster.health(wait_for_status='yellow', timeout='30s')
+            print(f"Elasticsearch health: {health['status']}")
+            
+            # Create index if it doesn't exist
+            if not es.indices.exists(index="pdf_documents"):
+                mapping = {
+                    "mappings": {
+                        "properties": {
+                            "title": { "type": "text" },
+                            "content": { "type": "text" },
+                            "file_path": { "type": "keyword" },
+                            "uploaded_at": { "type": "date" }
+                        }
+                    },
+                    "settings": {
+                        "number_of_replicas": 0
+                    }
+                }
+                es.indices.create(index="pdf_documents", body=mapping)
+                print("Created pdf_documents index")
+            return True
+            
+        except Exception as e:
+            print(f"Elasticsearch initialization attempt {i+1} failed: {str(e)}")
+            if i == 2:  # Last attempt
+                print("Failed to initialize Elasticsearch after 3 attempts")
+                return False
+            time.sleep(5)  # Wait 5 seconds before retrying
+    return False
+
+@app.on_event("startup")
+async def startup_event():
+    if not init_elasticsearch():
+        print("WARNING: Application starting without Elasticsearch connection")
 
 # Get the PDF directory from the environment variable
 PDF_DIRECTORY = os.environ.get('PDF_DIRECTORY', '/app/pdf_data')
@@ -52,121 +114,198 @@ class SearchQuery(BaseModel):
     page: int = 1
     size: int = 50  # We'll keep this but ignore it from the request
 
+class BulkIndexRequest(BaseModel):
+    documents: List[dict]
+
+class BulkDocuments(BaseModel):
+    documents: List[dict]
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the PDF Search API"}
 
+@app.get("/api")
+async def list_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "methods": route.methods,
+            "name": route.name
+        })
+    return {"routes": routes}
+
 @app.post("/search")
 async def search_pdfs(search_query: SearchQuery):
-    try:
-        page_size = 50
-        current_page = max(1, search_query.page)
-        
-        # First get total count with same query as search
-        count_result = es.count(
-            index="pdf_documents",
-            body={
-                "query": {
-                    "multi_match": {
-                        "query": search_query.query,
-                        "fields": ["content"],
-                        "operator": "or",
-                        "minimum_should_match": "75%"
-                    }
-                }
-            }
+    if not es:
+        raise HTTPException(
+            status_code=503,
+            detail="Elasticsearch connection not available"
         )
+    
+    try:
+        # Check cluster health first
+        health = es.cluster.health()
+        if health['status'] == 'red':
+            raise HTTPException(
+                status_code=503,
+                detail="Elasticsearch cluster is unhealthy"
+            )
         
-        total_docs = count_result['count']
-        print(f"Total matching documents: {total_docs}")
-        
-        if total_docs == 0:
+        # Check if index exists
+        if not es.indices.exists(index="pdf_documents"):
             return {
                 "pagination": {
                     "current_page": 1,
                     "total_pages": 1,
-                    "page_size": page_size,
+                    "page_size": 50,
                     "total_documents": 0,
                     "returned_documents": 0
                 },
                 "results": []
             }
+            
+        page_size = 50
+        current_page = max(1, search_query.page)
         
-        # Calculate total pages based on actual matching documents
-        total_pages = (total_docs + page_size - 1) // page_size
-        
-        # Ensure current page is within bounds
-        current_page = min(max(1, current_page), total_pages)
-        
-        # Calculate from_idx based on actual available documents
-        from_idx = (current_page - 1) * page_size
-        
-        # Calculate actual size for this page
-        remaining_docs = total_docs - from_idx
-        current_page_size = min(page_size, remaining_docs)
-        
-        print(f"Debug - Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Total: {total_docs}")
-        
-        # Search with fixed size
-        result = es.search(
-            index="pdf_documents",
-            body={
-                "query": {
-                    "multi_match": {
-                        "query": search_query.query,
-                        "fields": ["title", "content"],
-                        "operator": "or",
-                        "minimum_should_match": "75%"
-                    }
-                },
-                "highlight": {
-                    "fields": {
-                        "title": {"number_of_fragments": 0},
-                        "content": {
-                            "number_of_fragments": 3, 
-                            "fragment_size": 150,
-                            "max_analyzed_offset": 1000000
+        try:
+            # First get total count with same query as search
+            count_result = es.count(
+                index="pdf_documents",
+                body={
+                    "query": {
+                        "multi_match": {
+                            "query": search_query.query,
+                            "fields": ["content^2", "title"],
+                            "operator": "or",
+                            "minimum_should_match": "50%"
                         }
                     }
+                }
+            )
+            total_docs = count_result['count']
+            print(f"Total matching documents: {total_docs}")
+            
+            if total_docs == 0:
+                return {
+                    "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "page_size": page_size,
+                        "total_documents": 0,
+                        "returned_documents": 0
+                    },
+                    "results": []
+                }
+            
+            # Calculate total pages based on actual matching documents
+            total_pages = (total_docs + page_size - 1) // page_size
+            
+            # Ensure current page is within bounds
+            current_page = min(max(1, current_page), total_pages)
+            
+            # Calculate from_idx based on actual available documents
+            from_idx = (current_page - 1) * page_size
+            
+            # Calculate actual size for this page
+            remaining_docs = total_docs - from_idx
+            current_page_size = min(page_size, remaining_docs)
+            
+            print(f"Debug - Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Total: {total_docs}")
+            
+            # Search with fixed size
+            result = es.search(
+                index="pdf_documents",
+                body={
+                    "query": {
+                        "multi_match": {
+                            "query": search_query.query,
+                            "fields": ["title", "content"],
+                            "operator": "or",
+                            "minimum_should_match": "75%"
+                        }
+                    },
+                    "highlight": {
+                        "fields": {
+                            "title": {"number_of_fragments": 0},
+                            "content": {
+                                "number_of_fragments": 3, 
+                                "fragment_size": 150,
+                                "max_analyzed_offset": 1000000
+                            }
+                        }
+                    },
+                    "from": from_idx,
+                    "size": current_page_size,
+                    "track_total_hits": True
+                }
+            )
+            
+            hits = result['hits']['hits']
+            
+            # Add debug logging
+            print(f"Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Hits: {len(hits)}")
+            
+            return {
+                "pagination": {
+                    "current_page": current_page,
+                    "total_pages": total_pages,
+                    "page_size": current_page_size,
+                    "total_documents": total_docs,
+                    "returned_documents": len(hits)
                 },
-                "from": from_idx,
-                "size": current_page_size,
-                "track_total_hits": True
+                "results": [{
+                    "title": hit["_source"].get("title", ""),
+                    "content": hit["_source"].get("content", ""),
+                    "file_name": os.path.basename(hit["_source"].get("file_path", "")),
+                    "file_url": hit["_source"].get("file_path", ""),
+                    "highlights": hit.get("highlight", {}),
+                    "score": hit["_score"]
+                } for hit in hits]
             }
-        )
-        
-        hits = result['hits']['hits']
-        
-        # Add debug logging
-        print(f"Page: {current_page}, From: {from_idx}, Size: {current_page_size}, Hits: {len(hits)}")
-        
-        return {
-            "pagination": {
-                "current_page": current_page,
-                "total_pages": total_pages,
-                "page_size": current_page_size,
-                "total_documents": total_docs,
-                "returned_documents": len(hits)
-            },
-            "results": [{
-                "title": hit["_source"].get("title", ""),
-                "content": hit["_source"].get("content", ""),
-                "file_name": os.path.basename(hit["_source"].get("file_path", "")),
-                "file_url": hit["_source"].get("file_path", ""),
-                "highlights": hit.get("highlight", {}),
-                "score": hit["_score"]
-            } for hit in hits]
-        }
+        except Exception as es_error:
+            print(f"Elasticsearch query error: {str(es_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Search query error: {str(es_error)}"
+            )
+            
     except Exception as e:
-        print(f"Search error details: {str(e)}")  # More detailed error logging
-        raise  # Re-raise the exception to see the actual error
+        print(f"Search error details: {str(e)}")
+        if "no such index" in str(e).lower():
+            return {
+                "pagination": {
+                    "current_page": 1,
+                    "total_pages": 1,
+                    "page_size": 50,
+                    "total_documents": 0,
+                    "returned_documents": 0
+                },
+                "results": []
+            }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search error: {str(e)}"
+        )
 
 @app.get("/health")
 async def health_check():
-    if es.ping():
-        return {"status": "healthy"}
-    else:
-        raise HTTPException(status_code=500, detail="Elasticsearch is not responding")
+    if not es:
+        raise HTTPException(
+            status_code=503,
+            detail="Elasticsearch is not initialized"
+        )
+    try:
+        health = es.cluster.health()
+        return {
+            "status": "healthy",
+            "elasticsearch": health['status']
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Elasticsearch health check failed: {str(e)}"
+        )
 
 @app.get("/pdf/{file_path:path}")
 async def get_pdf(file_path: str):
@@ -213,3 +352,35 @@ async def get_index_stats():
     except Exception as e:
         print(f"Stats error: {e}")
         return {"error": str(e)}
+
+@app.post("/api/documents/_bulk")
+async def bulk_index(request: Request):
+    try:
+        docs = await request.json()
+        print(f"Received bulk request with {len(docs)} documents")
+        
+        actions = [{"_index": "pdf_documents", "_source": doc} for doc in docs]
+        success, failed = helpers.bulk(es, actions, stats_only=True)
+        
+        print(f"Bulk indexed {success} documents, {failed} failed")
+        return {
+            "status": "success",
+            "indexed": success,
+            "failed": failed
+        }
+    except Exception as e:
+        print(f"Bulk index error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+# Optional: Add route listing for debugging
+@app.get("/api/routes")
+async def list_routes():
+    return {
+        "routes": [
+            {"path": route.path, "methods": route.methods}
+            for route in app.routes
+        ]
+    }

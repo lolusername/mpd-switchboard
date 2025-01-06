@@ -1,0 +1,17 @@
+branch-defaults:
+  main:
+    environment: switchboard-dev
+
+global:
+  application_name: switchboard
+  default_platform: Docker
+  default_region: us-east-1
+  workspace_type: Application
+
+option_settings:
+  aws:ec2:instances:
+    EnableSpot: false
+  aws:autoscaling:launchtemplate:
+    LaunchTemplateName: eb-switchboard-template
+  aws:elasticbeanstalk:environment:
+    EnvironmentType: SingleInstance 

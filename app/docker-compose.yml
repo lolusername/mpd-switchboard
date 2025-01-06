@@ -1,15 +1,25 @@
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
       - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - path.repo=/usr/share/elasticsearch/snapshots
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - "bootstrap.memory_lock=false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     ports:
       - "9200:9200"
     volumes:
       - switchboard_data:/usr/share/elasticsearch/data
+      - ./snapshots:/usr/share/elasticsearch/snapshots
+    networks:
+      - switchboard_default
 
   api:
     build:
@@ -25,11 +35,46 @@ services:
     environment:
       - PDF_DIRECTORY=/app/pdf_data
       - ELASTICSEARCH_HOST=http://elasticsearch:9200
+    networks:
+      - switchboard_default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: switchboard_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - NUXT_PUBLIC_API_BASE=http://3.83.115.156:8000
+    depends_on:
+      - api
+
+  ingest:
+    build:
+      context: .
+      dockerfile: elasticsearch-init/Dockerfile
+    environment:
+      - ES_SOURCE=http://elasticsearch:9200
+      - ES_TARGET=http://3.83.115.156:8000
+    command: ["python", "elasticsearch-init/reindex.py"]
+    networks:
+      - switchboard_default
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./elasticsearch-init:/app/elasticsearch-init
+
 volumes:
   switchboard_data:
+
+networks:
+  switchboard_default:
+    driver: bridge

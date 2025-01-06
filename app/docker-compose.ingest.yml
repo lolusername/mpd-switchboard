@@ -1,14 +1,25 @@
 services:
+  elasticsearch:
+    extends:
+      file: docker-compose.yml
+      service: elasticsearch
+
   ingest:
     build:
       context: .
       dockerfile: elasticsearch-init/Dockerfile
     volumes:
       - ../data:/app/data
+      - ./elasticsearch-init:/app/elasticsearch-init
     command: ["python", "elasticsearch-init/main.py", "--pdf_dir", "/app/data", "--es_host", "http://elasticsearch:9200"]
     networks:
       - switchboard_default
+    depends_on:
+      - elasticsearch
 
 networks:
   switchboard_default:
-    external: true
+    driver: bridge
+
+volumes:
+  switchboard_data:

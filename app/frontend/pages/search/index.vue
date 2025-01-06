@@ -174,6 +174,9 @@
   <script setup>
   import { ref, watch, computed, onMounted } from 'vue'
   
+  const config = useRuntimeConfig()
+  console.log(config)
+  
   // State
   const searchQuery = ref('')
   const searchResults = ref([])
@@ -192,13 +195,12 @@
   
     isLoading.value = true
     try {
-      const response = await $fetch('http://localhost:8000/search', {
+      const response = await $fetch(`http://localhost:8000/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include',
         body: {
           query: searchQuery.value,
           page
