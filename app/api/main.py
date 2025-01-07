@@ -11,45 +11,14 @@ import time
 # Create the FastAPI app
 app = FastAPI()
 
-# Custom middleware to ensure CORS headers are always sent
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
-
-# Error handling middleware
-@app.middleware("http")
-async def catch_exceptions(request: Request, call_next):
-    try:
-        return await call_next(request)
-    except Exception as e:
-        print(f"Error caught in middleware: {str(e)}")
-        return JSONResponse(
-            status_code=500,  # Return 200 even for errors to avoid CORS issues
-            content={"error": str(e)}
-        )
-
-# Standard CORS middleware
+# Update the CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],  
+    allow_credentials=False,  # Changed to False
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://3.83.115.156:3000"],  # Add localhost
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Initialize Elasticsearch client with better error handling and retry logic

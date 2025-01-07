@@ -3,6 +3,8 @@
 A comprehensive platform for analyzing document collections through advanced text processing, network analysis, and interactive visualizations. Built by Miski Studio for Data for Black Lives (D4BL) to help researchers, journalists, and community members understand complex document collections.
 
 ## Project Structure
+
+```
 switchboard/
 ├── app/                    # Main application
 │   ├── api/               # FastAPI backend
@@ -20,6 +22,7 @@ switchboard/
     ├── meta_data.json    # Document metadata
     ├── email_analysis/   # Communication patterns
     └── sensitive_data_log.txt # Redaction records
+```
 
 ## Key Features
 
@@ -137,13 +140,6 @@ We welcome contributions! Key areas:
 - Additional visualizations
 - Performance optimizations
 - Documentation improvements
-
-## License
-
-Copyright © 2024 Data for Black Lives (D4BL)
-Developed by Miski Studio / Atilio Barreda II
-
-All rights reserved. This software and associated documentation files are the proprietary property of Data for Black Lives (D4BL). No part of this software may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of Data for Black Lives (D4BL).
 
 
 ## Make Commands
