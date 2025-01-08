@@ -195,8 +195,7 @@
   
     isLoading.value = true
     try {
-      const apiBase = useRuntimeConfig().public.apiBase
-      const response = await $fetch(`${apiBase}/search`, {
+      const response = await $fetch(`http://localhost:8000/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

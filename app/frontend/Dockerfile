@@ -2,20 +2,22 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy only package files first
+# Install dependencies first (better caching)
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Then copy the rest (excluding node_modules thanks to .dockerignore)
+# Copy the rest of the application
 COPY . .
 
 # Build for production
 RUN npm run build
 
+# Expose the port
 EXPOSE 3000
+
+# Set host to allow external connections
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
+# Start the server (changed from preview to start)
 CMD ["node", ".output/server/index.mjs"]
