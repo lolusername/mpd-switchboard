@@ -20,6 +20,11 @@ services:
       - ./snapshots:/usr/share/elasticsearch/snapshots
     networks:
       - switchboard_default
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"' || grep -q '"status":"yellow"'
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
   api:
     build:
@@ -27,21 +32,27 @@ services:
       dockerfile: Dockerfile
     container_name: switchboard_api
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
       - ../data:/app/pdf_data
+      - ./api:/app
     environment:
       - PDF_DIRECTORY=/app/pdf_data
       - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - SECRET_KEY=${SECRET_KEY}
+      - PYTHONPATH=/app
     networks:
       - switchboard_default
+    restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: curl -f http://localhost:8000/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
     build:
@@ -53,9 +64,11 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=3000
-      - NUXT_PUBLIC_API_BASE=http://3.83.115.156:8000
+      - NUXT_PUBLIC_API_BASE=http://localhost:8000
     depends_on:
       - api
+    networks:
+      - switchboard_default
 
   ingest:
     build:

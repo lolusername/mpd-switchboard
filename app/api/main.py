@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from elasticsearch import Elasticsearch, helpers
@@ -7,6 +7,9 @@ import os
 from urllib.parse import unquote
 from typing import List
 import time
+from fastapi.security import OAuth2PasswordRequestForm
+import auth
+from datetime import timedelta
 
 # Create the FastAPI app
 app = FastAPI()
@@ -14,23 +17,16 @@ app = FastAPI()
 # Standard CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://3.83.115.156:3000", "http://localhost"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://3.83.115.156:3000",
+        "http://localhost",
+        "http://localhost:80"
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list methods
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,  # Cache preflight requests for 1 hour
 )
-
-# Custom middleware to ensure CORS headers are always sent
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "http://localhost"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
 
 # Error handling middleware
 @app.middleware("http")
@@ -111,6 +107,14 @@ class BulkIndexRequest(BaseModel):
 
 class BulkDocuments(BaseModel):
     documents: List[dict]
+
+# This is a simple user store - in production, use a database
+users_db = {
+    "admin": {
+        "username": "admin",
+        "password": auth.get_password_hash("admin123")  # Change this!
+    }
+}
 
 @app.get("/")
 async def root():
@@ -376,3 +380,24 @@ async def list_routes():
             for route in app.routes
         ]
     }
+
+@app.post("/token")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = users_db.get(form_data.username)
+    if not user or not auth.verify_password(form_data.password, user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = auth.create_access_token(
+        data={"sub": user["username"]},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Protected route example
+@app.get("/protected")
+async def protected_route(current_user: str = Depends(auth.get_current_user)):
+    return {"message": "You are authenticated", "user": current_user}

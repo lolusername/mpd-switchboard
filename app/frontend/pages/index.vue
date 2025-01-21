@@ -87,6 +87,15 @@
           <TopicSimilarityNetwork />
         </div>
       </div>
+
+      <div class="flex justify-end p-4">
+        <button 
+          @click="handleLogout" 
+          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -101,8 +110,12 @@ import TopicUMAP from '~/components/visualizations/TopicUMAP.vue'
 import TopicTSNE from '~/components/visualizations/TopicTSNE.vue'
 import TopicSimilarityNetwork from '~/components/visualizations/TopicSimilarityNetwork.vue'
 import Sidebar from '~/components/Sidebar.vue'
+import { useAuth } from '~/composables/useAuth'
+import { useRouter } from 'vue-router'
 
 const { fetchData, stats } = useEmailStats()
+const auth = useAuth()
+const router = useRouter()
 
 const showDebugViz = ref(false)
 
@@ -112,9 +125,18 @@ const handleKeyDown = (e) => {
   }
 }
 
+const handleLogout = () => {
+  auth.logout()
+  router.push('/login')
+}
+
 onMounted(() => {
   fetchData()
   window.addEventListener('keydown', handleKeyDown)
+
+  if (!auth.isAuthenticated.value) {
+    router.push('/login')
+  }
 })
 
 onUnmounted(() => {
