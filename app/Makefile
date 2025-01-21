@@ -1,7 +1,8 @@
 # app/Makefile
 
 # Variables
-DOCKER_COMPOSE = docker-compose
+# Check if docker-compose exists, otherwise use 'docker compose'
+DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
 INGEST_COMPOSE_FILE = docker-compose.ingest.yml
 EC2_IP := $(shell aws ec2 describe-instances \
     --instance-ids i-02915630dfcbc43d0 \
@@ -21,6 +22,9 @@ help:
 	@echo "  ingest         - Run the PDF ingestion process"
 	@echo "  deploy        - Deploy to EC2"
 	@echo "  deploy-files  - Deploy only updated files to EC2"
+	@echo "  rebuild       - Rebuild and restart all containers"
+	@echo "  up            - Start containers"
+	@echo "  down          - Stop containers"
 	@echo "  help          - Show this help message"
 
 ingest:
@@ -76,35 +80,35 @@ deploy-files: clean-ec2
 
 # Rebuild and restart all containers
 rebuild:
-	docker-compose down
-	docker-compose build
-	docker-compose up -d
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) build
+	$(DOCKER_COMPOSE) up -d
 
 # Start containers
 up:
-	docker-compose up -d
+	$(DOCKER_COMPOSE) up -d
 
 # Stop containers
 down:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
 # View logs
 logs:
-	docker-compose logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 # Build without starting
 build:
-	docker-compose build
+	$(DOCKER_COMPOSE) build
 
 # Rebuild specific service
 rebuild-service:
-	docker-compose build $(service)
-	docker-compose up -d $(service)
+	$(DOCKER_COMPOSE) build $(service)
+	$(DOCKER_COMPOSE) up -d $(service)
 
 # Clean everything
 clean:
-	docker-compose down -v
-	docker system prune -f
+	$(DOCKER_COMPOSE) down -v
+	$(DOCKER_COMPOSE) system prune -f
 
 clean-ec2:
 	@echo "🧹 Cleaning up EC2 instance..."
@@ -130,7 +134,7 @@ snapshot: init-snapshots
 	@echo "📸 Creating Elasticsearch snapshot..."
 	@curl -X PUT "localhost:9200/_snapshot/switchboard_backup/snapshot_$(shell date +%Y%m%d_%H%M%S)?wait_for_completion=true" \
 		-H "Content-Type: application/json" \
-		-d '{"indices": "switchboard","ignore_unavailable": true,"include_global_state": false}'
+		-d '{"indices": "pdf_documents","ignore_unavailable": true,"include_global_state": false}'
 	@echo "✅ Snapshot created in ./snapshots"
 
 # List all snapshots
