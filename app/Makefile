@@ -5,7 +5,7 @@
 DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
 INGEST_COMPOSE_FILE = docker-compose.ingest.yml
 EC2_IP := $(shell aws ec2 describe-instances \
-    --instance-ids i-09b9f17b14079cf99 \
+    --instance-ids i-09769d9810bdeae42 \
     --query 'Reservations[*].Instances[*].PublicIpAddress' \
     --output text)
 EC2_HOST = ubuntu@$(EC2_IP)
@@ -15,7 +15,7 @@ PROJECT_NAME = switchboard
 # Default target
 .DEFAULT_GOAL := help
 
-.PHONY: help ingest deploy snapshot list-snapshots init-snapshots setup-ec2 clean-ec2 check-deployment deep-clean-ec2 check-es check-api check-frontend check-all check-security-group check-network-acls list-instances check-elastic-ips check-services restart-ssh check-ports reboot-instance force-restart-instance terminate-unused release-elastic-ip check-costs check-cleanup start-switchboard allocate-ip check-status check-ip check-instance check-account create-instance
+.PHONY: help ingest deploy snapshot list-snapshots init-snapshots setup-ec2 clean-ec2 check-deployment deep-clean-ec2 check-es check-api check-frontend check-all check-security-group check-network-acls list-instances check-elastic-ips check-services restart-ssh check-ports reboot-instance force-restart-instance terminate-unused release-elastic-ip check-costs check-cleanup start-switchboard allocate-ip check-status check-ip check-instance check-account create-instance recover-instance debug-ssh
 
 help:
 	@echo "Available commands:"
@@ -38,7 +38,7 @@ APP_DIR := /home/ubuntu/switchboard
 # Setup EC2 instance
 setup-ec2:
 	@echo "🚀 Setting up EC2 instance..."
-	ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) '\
+	ssh -i $(PEM_PATH) $(EC2_USER)@$(EC2_IP) '\
 		sudo apt-get update && \
 		sudo apt-get install -y docker.io docker-compose git && \
 		sudo systemctl start docker && \
@@ -107,7 +107,12 @@ deploy:
 		exit 1; \
 	fi
 	@echo "🔍 Testing SSH connection to $(EC2_IP)..."
-	@ssh -i $(PEM_PATH) -o ConnectTimeout=10 -o StrictHostKeyChecking=no $(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'" || \
+	@ssh -v -i $(PEM_PATH) \
+		-o ConnectTimeout=10 \
+		-o ServerAliveInterval=60 \
+		-o ServerAliveCountMax=10 \
+		-o StrictHostKeyChecking=no \
+		$(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'" || \
 		(echo "❌ SSH connection failed! Debugging info:" && \
 		echo "- Instance IP: $(EC2_IP)" && \
 		echo "- PEM file: $(PEM_PATH)" && \
@@ -124,12 +129,16 @@ deploy:
 		--exclude '*.pyc' \
 		--exclude '__pycache__' \
 		./ $(EC2_USER)@$(EC2_IP):/home/ubuntu/switchboard/app/
-	@echo "\n🚀 Force starting all services..."
-	ssh -i $(PEM_PATH) $(EC2_USER)@$(EC2_IP) "\
+	@echo "\n🚀 Force rebuilding and starting all services..."
+	ssh -o ConnectTimeout=10 \
+		-o ServerAliveInterval=60 \
+		-o ServerAliveCountMax=10 \
+		-i $(PEM_PATH) $(EC2_USER)@$(EC2_IP) "\
 		cd $(APP_DIR)/app && \
 		sudo docker-compose down -v || true && \
 		sudo docker system prune -f || true && \
 		sudo sysctl -w vm.max_map_count=262144 && \
+		sudo docker-compose build --no-cache frontend && \
 		(nohup sudo docker-compose up -d --force-recreate --no-deps > /dev/null 2>&1 &) && \
 		echo '✅ Services starting in background!'"
 	@echo "\n🎉 Deployment complete! Application should be running at http://$(EC2_IP)"
@@ -137,17 +146,17 @@ deploy:
 # Update reboot command with SSH service check
 reboot-instance:
 	@echo "🔄 Rebooting EC2 instance..."
-	@aws ec2 reboot-instances --instance-ids i-09b9f17b14079cf99
+	@aws ec2 reboot-instances --instance-ids i-09769d9810bdeae42
 	@echo "⏳ Waiting for instance to reboot (this will take a minute)..."
 	@sleep 90
 	@echo "🔍 Checking instance status..."
 	@aws ec2 describe-instance-status \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'InstanceStatuses[0].InstanceStatus.Status' \
 		--output text
 	@echo "🔄 Attempting to restart SSH service..."
 	@aws ec2 send-command \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--document-name "AWS-RunShellScript" \
 		--parameters commands=['sudo systemctl restart ssh'] \
 		--output text || echo "⚠️  Could not restart SSH service via SSM"
@@ -156,35 +165,23 @@ reboot-instance:
 # Add this command to force stop/start the instance with AZ flexibility
 force-restart-instance:
 	@echo "🛑 Stopping EC2 instance..."
-	@aws ec2 stop-instances --instance-ids i-09b9f17b14079cf99
+	@aws ec2 stop-instances --instance-ids i-09769d9810bdeae42
 	@echo "⏳ Waiting for instance to stop..."
-	@aws ec2 wait instance-stopped --instance-ids i-09b9f17b14079cf99
-	@echo "🚀 Attempting to start instance in different AZs..."
-	@for az in us-east-1a us-east-1b us-east-1c us-east-1d us-east-1e us-east-1f; do \
-		echo "Trying AZ: $$az..."; \
-		if aws ec2 modify-instance-placement \
-			--instance-id i-09b9f17b14079cf99 \
-			--group-name "" \
-			--tenancy default \
-			--affinity default \
-			--host-id "" \
-			--partition-number 1 \
-			--host-resource-group-arn "" \
-			2>/dev/null; then \
-			if aws ec2 start-instances --instance-ids i-09b9f17b14079cf99 2>/dev/null; then \
-				echo "✅ Instance started successfully in $$az"; \
-				break; \
-			fi; \
-		fi; \
-		echo "⚠️  Failed to start in $$az, trying next..."; \
-		sleep 5; \
-	done
-	@echo "⏳ Waiting for instance to start..."
-	@aws ec2 wait instance-running --instance-ids i-09b9f17b14079cf99 || \
-		(echo "❌ Failed to start instance in any AZ" && exit 1)
+	@aws ec2 wait instance-stopped --instance-ids i-09769d9810bdeae42
+	@echo "🚀 Starting instance..."
+	@aws ec2 start-instances --instance-ids i-09769d9810bdeae42
+	@echo "⏳ Waiting for instance to start (this may take a few minutes)..."
+	@aws ec2 wait instance-running --instance-ids i-09769d9810bdeae42 || \
+		(echo "❌ Failed to start instance. Attempting recovery..." && \
+		aws ec2 start-instances --instance-ids i-09769d9810bdeae42 && \
+		aws ec2 wait instance-running --instance-ids i-09769d9810bdeae42)
 	@echo "⏳ Giving services time to start..."
 	@sleep 60
-	@echo "✅ Instance restarted. Try SSH again with: make test-ssh"
+	@echo "✅ Instance restarted. New IP address:"
+	@aws ec2 describe-instances \
+		--instance-ids i-09769d9810bdeae42 \
+		--query 'Reservations[*].Instances[*].PublicIpAddress' \
+		--output text
 
 # Add a simple SSH test command
 test-ssh:
@@ -291,7 +288,7 @@ check-all:
 check-ec2:
 	@echo "Checking EC2 instance status..."
 	@aws ec2 describe-instances \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'Reservations[*].Instances[*].{State:State.Name,IP:PublicIpAddress,AZ:Placement.AvailabilityZone}' \
 		--output table || echo "⚠️  Error: Instance not found or AWS CLI not configured properly"
 
@@ -300,7 +297,7 @@ check-security-group:
 	@echo "Checking security group rules..."
 	@aws ec2 describe-security-groups \
 		--group-ids $(shell aws ec2 describe-instances \
-			--instance-ids i-09b9f17b14079cf99 \
+			--instance-ids i-09769d9810bdeae42 \
 			--query 'Reservations[*].Instances[*].SecurityGroups[*].GroupId' \
 			--output text) \
 		--query 'SecurityGroups[*].IpPermissions[?ToPort==`22`]'
@@ -310,7 +307,7 @@ check-network-acls:
 	@echo "Checking Network ACLs..."
 	@aws ec2 describe-network-acls \
 		--filters Name=vpc-id,Values=$(shell aws ec2 describe-instances \
-			--instance-ids i-09b9f17b14079cf99 \
+			--instance-ids i-09769d9810bdeae42 \
 			--query 'Reservations[*].Instances[*].VpcId' \
 			--output text)
 
@@ -332,7 +329,7 @@ check-elastic-ips:
 check-services:
 	@echo "🔍 Checking running services on EC2..."
 	@aws ssm send-command \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--document-name "AWS-RunShellScript" \
 		--parameters commands=['sudo systemctl list-units --type=service --state=running'] \
 		--output text
@@ -342,7 +339,7 @@ check-status:
 	@echo "🔍 Checking switchboard status..."
 	@echo "\nInstance Info:"
 	@aws ec2 describe-instances \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'Reservations[*].Instances[*].{State:State.Name,IP:PublicIpAddress,AZ:Placement.AvailabilityZone}' \
 		--output table || echo "⚠️  Error: Instance not found or AWS CLI not configured properly"
 
@@ -350,7 +347,7 @@ check-status:
 restart-ssh:
 	@echo "🔄 Restarting SSH service on EC2..."
 	@aws ssm send-command \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--document-name "AWS-RunShellScript" \
 		--parameters commands=['sudo systemctl restart ssh'] \
 		--output text || echo "⚠️  Could not restart SSH service via SSM"
@@ -359,7 +356,7 @@ restart-ssh:
 check-ports:
 	@echo "👀 Checking listening ports on EC2..."
 	@aws ssm send-command \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--document-name "AWS-RunShellScript" \
 		--parameters commands=['sudo netstat -tulpn | grep LISTEN'] \
 		--output text
@@ -402,9 +399,9 @@ check-costs:
 # Add these resource management commands
 start-switchboard:
 	@echo "🚀 Starting switchboard instance..."
-	@aws ec2 start-instances --instance-ids i-09b9f17b14079cf99
+	@aws ec2 start-instances --instance-ids i-09769d9810bdeae42
 	@echo "⏳ Waiting for instance to start..."
-	@aws ec2 wait instance-running --instance-ids i-09b9f17b14079cf99
+	@aws ec2 wait instance-running --instance-ids i-09769d9810bdeae42
 	@echo "✅ Instance started! Run 'make check-ip' to see the new IP"
 
 allocate-ip:
@@ -413,7 +410,7 @@ allocate-ip:
 		--query 'AllocationId' --output text > .elastic-ip-id
 	@echo "🔗 Associating Elastic IP with instance..."
 	@aws ec2 associate-address \
-		--instance-id i-09b9f17b14079cf99 \
+		--instance-id i-09769d9810bdeae42 \
 		--allocation-id $$(cat .elastic-ip-id)
 	@rm .elastic-ip-id
 	@echo "✅ Elastic IP allocated and associated!"
@@ -422,14 +419,14 @@ check-status:
 	@echo "🔍 Checking switchboard status..."
 	@echo "\nInstance Info:"
 	@aws ec2 describe-instances \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'Reservations[*].Instances[*].{State:State.Name,IP:PublicIpAddress,AZ:Placement.AvailabilityZone}' \
 		--output table || echo "⚠️  Error: Instance not found or AWS CLI not configured properly"
 
 check-ip:
 	@echo "Current EC2 IP address:"
 	@aws ec2 describe-instances \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'Reservations[*].Instances[*].PublicIpAddress' \
 		--output text
 	@echo "\nElastic IP associations:"
@@ -441,7 +438,7 @@ check-ip:
 check-instance:
 	@echo "🔍 Checking instance status..."
 	@aws ec2 describe-instances \
-		--instance-ids i-09b9f17b14079cf99 \
+		--instance-ids i-09769d9810bdeae42 \
 		--query 'Reservations[*].Instances[*].{State:State.Name,Type:InstanceType,AZ:Placement.AvailabilityZone,StateReason:StateReason.Message}' \
 		--output table || echo "⚠️  Instance might be terminated"
 
@@ -461,3 +458,60 @@ create-instance:
 		--subnet-id subnet-0123456789abcdef0 \
 		--tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=switchboard}]' \
 		--output table
+
+recover-instance:
+	@echo "🚑 Attempting instance recovery..."
+	@echo "1️⃣ Force stopping instance..."
+	@aws ec2 stop-instances --instance-ids i-09769d9810bdeae42 --force
+	@echo "⏳ Waiting for full stop (120 seconds)..."
+	@sleep 120
+	@echo "2️⃣ Checking instance state..."
+	@aws ec2 describe-instances \
+		--instance-ids i-09769d9810bdeae42 \
+		--query 'Reservations[*].Instances[*].State.Name' \
+		--output text
+	@echo "3️⃣ Starting instance with recovery..."
+	@aws ec2 start-instances --instance-ids i-09769d9810bdeae42
+	@echo "⏳ Waiting up to 300 seconds for instance to start..."
+	@for i in 1 2 3 4 5; do \
+		echo "Attempt $$i of 5..."; \
+		if aws ec2 wait instance-running --instance-ids i-09769d9810bdeae42 --max-attempts 12; then \
+			echo "✅ Instance is running!"; \
+			break; \
+		fi; \
+		echo "⚠️ Still waiting..."; \
+		sleep 60; \
+	done
+	@echo "4️⃣ Getting instance status..."
+	@aws ec2 describe-instance-status \
+		--instance-ids i-09769d9810bdeae42 \
+		--include-all-instances \
+		--output table
+	@echo "5️⃣ New IP address:"
+	@aws ec2 describe-instances \
+		--instance-ids i-09769d9810bdeae42 \
+		--query 'Reservations[*].Instances[*].PublicIpAddress' \
+		--output text
+	@echo "6️⃣ Attempting to verify SSH (30 second timeout)..."
+	@timeout 30 ssh -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no -i $(PEM_PATH) ubuntu@$$(aws ec2 describe-instances --instance-ids i-09769d9810bdeae42 --query 'Reservations[*].Instances[*].PublicIpAddress' --output text) exit || echo "⚠️ SSH not responding yet"
+	@echo "\n✅ Recovery process completed - check instance status with: make check-instance"
+
+debug-ssh:
+	@echo "🔍 Testing SSH with maximum verbosity..."
+	@echo "Instance IP: $(EC2_IP)"
+	@echo "Testing direct TCP connection to port 22..."
+	@nc -zv $(EC2_IP) 22 || echo "❌ TCP connection failed"
+	@echo "\nTesting SSH with maximum verbosity..."
+	@ssh -vvv \
+		-i $(PEM_PATH) \
+		-o ConnectTimeout=10 \
+		-o BatchMode=yes \
+		-o StrictHostKeyChecking=no \
+		-o UserKnownHostsFile=/dev/null \
+		$(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'" || \
+		(echo "❌ SSH connection failed" && \
+		echo "\nChecking security group..." && \
+		aws ec2 describe-security-groups \
+			--group-ids sg-0a71ed07217f87897 \
+			--query 'SecurityGroups[*].IpPermissions' \
+			--output table)

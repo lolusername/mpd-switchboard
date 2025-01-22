@@ -14,7 +14,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css', '~/assets/css/variables.css'],
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'
+      apiBase: process.env.NODE_ENV === 'production' 
+        ? 'http://52.23.77.209:8000'
+        : 'http://localhost:3000'
     }
   },
   modules: [],  // Remove auth module for now

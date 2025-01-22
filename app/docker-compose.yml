@@ -54,7 +54,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=3000
-      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+      - NUXT_PUBLIC_API_BASE=http://52.23.77.209:8000
     depends_on:
       - api
     networks:
