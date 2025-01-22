@@ -1,14 +1,16 @@
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - "ES_JAVA_OPTS=-Xms384m -Xmx384m"
       - path.repo=/usr/share/elasticsearch/snapshots
       - cluster.routing.allocation.disk.threshold_enabled=false
       - "bootstrap.memory_lock=false"
+      - cluster.routing.allocation.disk.watermark.low=95%
+      - cluster.routing.allocation.disk.watermark.high=98%
+      - cluster.routing.allocation.disk.watermark.flood_stage=99%
     ulimits:
       memlock:
         soft: -1
@@ -20,11 +22,6 @@ services:
       - ./snapshots:/usr/share/elasticsearch/snapshots
     networks:
       - switchboard_default
-    healthcheck:
-      test: curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"' || grep -q '"status":"yellow"'
-      interval: 10s
-      timeout: 10s
-      retries: 3
 
   api:
     build:
@@ -32,8 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: switchboard_api
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      - elasticsearch
     ports:
       - "8000:8000"
     volumes:
@@ -47,12 +43,6 @@ services:
     networks:
       - switchboard_default
     restart: always
-    healthcheck:
-      test: curl -f http://localhost:8000/health || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   frontend:
     build:
