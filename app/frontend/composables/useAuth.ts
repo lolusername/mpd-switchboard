@@ -9,7 +9,7 @@ export function useAuth() {
   
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch(`http://52.23.77.209:8000/token`, {
+      const response = await fetch(`${config.public.apiBase}/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

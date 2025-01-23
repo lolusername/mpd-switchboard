@@ -229,8 +229,7 @@ async def search_pdfs(search_query: SearchQuery):
                             "title": {"number_of_fragments": 0},
                             "content": {
                                 "number_of_fragments": 3, 
-                                "fragment_size": 150,
-                                "max_analyzed_offset": 1000000
+                                "fragment_size": 150
                             }
                         }
                     },

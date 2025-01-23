@@ -106,42 +106,32 @@ deploy:
 		echo "Try running: make force-restart-instance"; \
 		exit 1; \
 	fi
-	@echo "🔍 Testing SSH connection to $(EC2_IP)..."
-	@ssh -v -i $(PEM_PATH) \
-		-o ConnectTimeout=10 \
-		-o ServerAliveInterval=60 \
-		-o ServerAliveCountMax=10 \
-		-o StrictHostKeyChecking=no \
-		$(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'" || \
-		(echo "❌ SSH connection failed! Debugging info:" && \
-		echo "- Instance IP: $(EC2_IP)" && \
-		echo "- PEM file: $(PEM_PATH)" && \
-		echo "- User: $(EC2_USER)" && \
-		ls -l $(PEM_PATH) && \
-		exit 1)
-	@echo "\n📦 Starting deployment..."
-	rsync -avz --timeout=60 --progress -e "ssh -i $(PEM_PATH)" \
+	@echo "🧹 Cleaning up EC2 instance..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
+	@echo "✅ Cleanup complete"
+	@echo "🔑 Testing SSH connection..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "echo '✅ SSH connection successful!'"
+	@echo "📦 Deploying application..."
+	# First, ensure .env exists or copy from .env.production
+	@if [ ! -f .env ]; then \
+		echo "Creating .env from .env.production..."; \
+		cp .env.production .env; \
+	fi
+	# Deploy the application files
+	rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
 		--exclude 'node_modules' \
 		--exclude '.git' \
-		--exclude '.env' \
 		--exclude 'data' \
 		--exclude 'snapshots' \
 		--exclude '*.pyc' \
 		--exclude '__pycache__' \
-		./ $(EC2_USER)@$(EC2_IP):/home/ubuntu/switchboard/app/
-	@echo "\n🚀 Force rebuilding and starting all services..."
-	ssh -o ConnectTimeout=10 \
-		-o ServerAliveInterval=60 \
-		-o ServerAliveCountMax=10 \
-		-i $(PEM_PATH) $(EC2_USER)@$(EC2_IP) "\
-		cd $(APP_DIR)/app && \
-		sudo docker-compose down -v || true && \
-		sudo docker system prune -f || true && \
-		sudo sysctl -w vm.max_map_count=262144 && \
-		sudo docker-compose build --no-cache frontend && \
-		(nohup sudo docker-compose up -d --force-recreate --no-deps > /dev/null 2>&1 &) && \
-		echo '✅ Services starting in background!'"
-	@echo "\n🎉 Deployment complete! Application should be running at http://$(EC2_IP)"
+		./ ubuntu@$(EC2_IP):/home/ubuntu/switchboard/app/
+	@echo "🚀 Starting services..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
+		if [ ! -f .env ]; then cp .env.production .env; fi && \
+		sudo docker-compose down && \
+		sudo docker-compose up -d --build --force-recreate"
+	@echo "✨ Deployment complete! Application is running at http://$(EC2_IP)"
 
 # Update reboot command with SSH service check
 reboot-instance:
@@ -197,7 +187,7 @@ rebuild:
 		sudo sysctl -w vm.max_map_count=262144 || true; \
 	fi
 	@echo "🔄 Rebuilding containers..."
-	$(DOCKER_COMPOSE) down -v || true
+	$(DOCKER_COMPOSE) down || true
 	$(DOCKER_COMPOSE) rm -f || true
 	$(DOCKER_COMPOSE) build --no-cache
 	@echo "🚀 Starting services..."
@@ -254,15 +244,15 @@ list-snapshots:
 check-deployment:
 	@echo "Checking deployment status..."
 	@echo "\nContainer Status:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker ps"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker ps"
 	@echo "\nFrontend Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker logs switchboard_frontend --tail 20"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_frontend --tail 20"
 	@echo "\nAPI Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker logs switchboard_api --tail 20"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_api --tail 20"
 	@echo "\nPublic IP:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "curl -s http://169.254.169.254/latest/meta-data/public-ipv4"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "curl -s http://169.254.169.254/latest/meta-data/public-ipv4"
 	@echo "\nListening Ports:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo netstat -tulpn | grep LISTEN"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo netstat -tulpn | grep LISTEN"
 
 # Add these debug commands
 check-es:
@@ -271,15 +261,15 @@ check-es:
 
 check-api:
 	@echo "API Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker logs switchboard_api"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_api"
 
 check-frontend:
 	@echo "Frontend Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker logs switchboard_frontend"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_frontend"
 
 check-all:
 	@echo "Container Status:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_HOST) "sudo docker ps -a"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker ps -a"
 	@make check-es
 	@make check-api
 	@make check-frontend

@@ -6,6 +6,7 @@ from elasticsearch import Elasticsearch, helpers
 from pdfminer.high_level import extract_text
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+import time
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -91,13 +92,28 @@ def main():
     logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
 
     logging.info(f"Connecting to Elasticsearch at {args.es_host}")
-    es = Elasticsearch([args.es_host])
-
-    if not es.ping():
-        logging.error(f"Cannot connect to Elasticsearch at {args.es_host}. Make sure it's running.")
-        sys.exit(1)
-    else:
-        logging.info(f"Successfully connected to Elasticsearch at {args.es_host}")
+    
+    # Add retry logic for Elasticsearch connection
+    max_retries = 5
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            es = Elasticsearch([args.es_host], retry_on_timeout=True, max_retries=3)
+            # Try to get cluster health instead of ping
+            health = es.cluster.health(wait_for_status='yellow', timeout='30s')
+            logging.info(f"Successfully connected to Elasticsearch at {args.es_host}")
+            logging.info(f"Cluster health: {health['status']}")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logging.warning(f"Failed to connect to Elasticsearch (attempt {attempt + 1}/{max_retries}): {e}")
+                logging.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                logging.error(f"Cannot connect to Elasticsearch at {args.es_host} after {max_retries} attempts. Make sure it's running.")
+                sys.exit(1)
 
     create_elasticsearch_index(es, args.index)
     
