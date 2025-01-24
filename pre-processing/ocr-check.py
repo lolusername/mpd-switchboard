@@ -48,7 +48,7 @@ def main():
     unselectable_pdfs = []
 
     # Use multiprocessing Pool to process PDFs in parallel
-    pool_size = cpu_count() - 2 # Use the number of CPU cores available
+    pool_size = max(1, cpu_count() - 2)  # Ensure at least 1 process
     print(f"Using {pool_size} processes for multiprocessing.")
     with Pool(processes=pool_size) as pool:
         # Map the is_text_selectable function to the list of PDF paths

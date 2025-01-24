@@ -11,7 +11,7 @@ DF_CORPORA := ./df_corpora    # New variable for the output file
 EMAIL_ANALYSIS_DIR := $(OUTPUT_DIR)/email_analysis
 
 # Group all PHONY targets
-.PHONY: check setup preprocess clean install help redact ocr create-df email-analysis
+.PHONY: check setup preprocess clean install help redact ocr create-df email-analysis deploy ingest-s3
 
 # Ensure pyenv and poetry are available
 check:
@@ -111,3 +111,45 @@ email-analysis: check
 			--verbose || { echo "Email network analysis failed"; exit 1; }; \
 	fi
 	@echo "Email network analysis completed. Results saved to ./reports/email_analysis"
+
+# Deploy the application
+deploy: check-env
+	@echo "🧹 Cleaning up EC2 instance..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
+	@echo "✅ Cleanup complete"
+	@echo "🔑 Testing SSH connection..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'"
+	@echo "📦 Deploying application..."
+	# First, ensure .env exists or copy from .env.production
+	@if [ ! -f .env ]; then \
+		echo "Creating .env from .env.production..."; \
+		cp .env.production .env; \
+	fi
+	# Deploy the application files
+	@rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
+		--exclude 'node_modules' \
+		--exclude '.git' \
+		--exclude 'data' \
+		--exclude 'snapshots' \
+		--exclude '*.pyc' \
+		--exclude '__pycache__' \
+		./ $(EC2_USER)@$(EC2_IP):/home/ubuntu/switchboard/app/
+	@echo "🚀 Starting services..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
+		if [ ! -f .env ]; then cp .env.production .env; fi && \
+		sudo docker compose down && \
+		sudo docker compose up -d --build --force-recreate"
+	@echo "✨ Deployment complete! Application is running at http://$(EC2_IP)"
+
+# Ingest data from S3 to Elasticsearch
+ingest-s3:
+	@echo "🚀 Installing elasticdump if not present..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo npm install -g elasticdump || true"
+	@echo "📦 Running elasticdump to import data..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "elasticdump \
+		--input=s3://d4bl-switchboard-data/pdf_documents.json \
+		--output=http://localhost:9200/pdf_documents \
+		--type=data \
+		--limit=10000"
+	@echo "✨ Import complete! Verifying index..."
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "curl -s http://localhost:9200/pdf_documents/_stats"

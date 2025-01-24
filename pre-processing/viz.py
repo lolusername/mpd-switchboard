@@ -134,7 +134,7 @@ def main(input_dir, output_dir, batch_size=50):
     
     optimal_batch_size = min(
         max_pdfs_by_ram,
-        batch_size * cpu_count(),
+        batch_size * max(1, cpu_count()),  # Ensure at least 1 process
         100  # Hard cap for safety
     )
     
@@ -145,7 +145,7 @@ def main(input_dir, output_dir, batch_size=50):
               for i in range(0, len(pdf_files), optimal_batch_size)]
     
     # Process batches in parallel
-    with Pool(processes=cpu_count() - 1) as pool:
+    with Pool(processes=max(1, cpu_count() - 1)) as pool:  # Ensure at least 1 process
         results = []
         for batch_results in tqdm(pool.imap(process_pdf_batch, batches),
                                 total=len(batches),

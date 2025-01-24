@@ -7,6 +7,15 @@ from pdfminer.high_level import extract_text
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 import time
+from functools import partial
+
+try:
+    import boto3
+    from urllib.parse import urlparse
+    import tempfile
+    S3_AVAILABLE = True
+except ImportError:
+    S3_AVAILABLE = False
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -33,7 +42,7 @@ def create_elasticsearch_index(es, index_name):
     es.indices.create(index=index_name, body=mapping)
     logging.info(f"Created index '{index_name}'.")
 
-def process_pdf(args):
+def process_pdf_local(args):
     file_path, base_pdf_dir = args
     relative_path = os.path.relpath(file_path, base_pdf_dir)
     
@@ -45,22 +54,83 @@ def process_pdf(args):
         'title': os.path.splitext(relative_path)[0],
         'content': text,
         'file_path': relative_path,
-        'uploaded_at': "2024-04-27"  # You may want to modify this
+        'uploaded_at': "2024-04-27"
     }
     return doc
 
-def ingest_pdfs(es, index_name, base_pdf_dir):
+def process_pdf_s3(file_path):
+    if not S3_AVAILABLE:
+        raise ImportError("boto3 is required for S3 support")
+        
+    parsed = urlparse(file_path)
+    bucket = parsed.netloc
+    key = parsed.path.lstrip('/')
+    
+    s3 = boto3.client('s3')
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+        try:
+            s3.download_file(bucket, key, tmp.name)
+            text = extract_text_from_pdf(tmp.name)
+        finally:
+            os.unlink(tmp.name)
+    
+    if not text.strip():
+        return None
+        
+    doc = {
+        'title': os.path.splitext(os.path.basename(key))[0],
+        'content': text,
+        'file_path': file_path,
+        'uploaded_at': "2024-04-27"
+    }
+    return doc
+
+def list_s3_pdfs(s3_path):
+    if not S3_AVAILABLE:
+        raise ImportError("boto3 is required for S3 support")
+        
+    parsed = urlparse(s3_path)
+    bucket = parsed.netloc
+    prefix = parsed.path.lstrip('/')
+    
+    s3 = boto3.client('s3')
+    paginator = s3.get_paginator('list_objects_v2')
     pdf_files = []
-    for root, _, files in os.walk(base_pdf_dir):
-        pdf_files.extend([os.path.join(root, f) for f in files if f.lower().endswith('.pdf')])
+    
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        if 'Contents' in page:
+            for obj in page['Contents']:
+                if obj['Key'].lower().endswith('.pdf'):
+                    pdf_files.append(f"s3://{bucket}/{obj['Key']}")
+    
+    return pdf_files
+
+def ingest_pdfs(es, index_name, base_path):
+    is_s3 = base_path.startswith('s3://')
+    
+    if is_s3:
+        if not S3_AVAILABLE:
+            raise ImportError("boto3 is required for S3 support")
+        pdf_files = list_s3_pdfs(base_path)
+        process_func = process_pdf_s3
+        process_args = pdf_files
+    else:
+        pdf_files = []
+        for root, _, files in os.walk(base_path):
+            pdf_files.extend([os.path.join(root, f) for f in files if f.lower().endswith('.pdf')])
+        process_func = process_pdf_local
+        process_args = [(f, base_path) for f in pdf_files]
     
     total_files = len(pdf_files)
     logging.info(f"Found {total_files} PDF files to process.")
-
-    process_args = [(f, base_pdf_dir) for f in pdf_files]
     
-    with Pool(processes=cpu_count()-2) as pool:
-        results = list(tqdm(pool.imap(process_pdf, process_args), total=total_files, desc="Processing PDFs"))
+    # Process PDFs in parallel
+    num_processes = max(1, cpu_count()-2)  # Ensure at least 1 process
+    with Pool(processes=num_processes) as pool:
+        if is_s3:
+            results = list(tqdm(pool.imap(process_func, process_args), total=total_files, desc="Processing PDFs"))
+        else:
+            results = list(tqdm(pool.imap(process_func, process_args), total=total_files, desc="Processing PDFs"))
     
     documents = [doc for doc in results if doc is not None]
     empty_pdfs = total_files - len(documents)
@@ -81,7 +151,7 @@ def ingest_pdfs(es, index_name, base_pdf_dir):
 
 def main():
     parser = argparse.ArgumentParser(description="Ingest PDFs into Elasticsearch.")
-    parser.add_argument('--pdf_dir', required=True, help='Base directory containing PDF files.')
+    parser.add_argument('--pdf_dir', required=True, help='Base directory containing PDF files or s3:// path.')
     parser.add_argument('--index', default='pdf_documents', help='Elasticsearch index name.')
     parser.add_argument('--es_host', default='http://localhost:9200', help='Elasticsearch host URL.')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
@@ -91,16 +161,18 @@ def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
 
+    if args.pdf_dir.startswith('s3://') and not S3_AVAILABLE:
+        logging.error("S3 support requires boto3. Install it with: pip install boto3")
+        sys.exit(1)
+
     logging.info(f"Connecting to Elasticsearch at {args.es_host}")
     
-    # Add retry logic for Elasticsearch connection
     max_retries = 5
     retry_delay = 5
     
     for attempt in range(max_retries):
         try:
             es = Elasticsearch([args.es_host], retry_on_timeout=True, max_retries=3)
-            # Try to get cluster health instead of ping
             health = es.cluster.health(wait_for_status='yellow', timeout='30s')
             logging.info(f"Successfully connected to Elasticsearch at {args.es_host}")
             logging.info(f"Cluster health: {health['status']}")
@@ -112,12 +184,12 @@ def main():
                 time.sleep(retry_delay)
                 continue
             else:
-                logging.error(f"Cannot connect to Elasticsearch at {args.es_host} after {max_retries} attempts. Make sure it's running.")
+                logging.error(f"Cannot connect to Elasticsearch at {args.es_host} after {max_retries} attempts.")
                 sys.exit(1)
 
     create_elasticsearch_index(es, args.index)
     
-    logging.info(f"Starting PDF ingestion from directory: {args.pdf_dir}")
+    logging.info(f"Starting PDF ingestion from: {args.pdf_dir}")
     ingest_pdfs(es, args.index, args.pdf_dir)
     logging.info("Ingestion process completed.")
 

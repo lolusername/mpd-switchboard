@@ -117,7 +117,7 @@ def main():
         return
 
     # Use multiprocessing to speed up processing
-    pool_size = cpu_count()-2  # Limit to 4 processes to avoid overloading
+    pool_size = max(1, cpu_count()-2)  # Ensure at least 1 process
     print(f"Using {pool_size} processes for OCR.")
 
     # For macOS, ensure 'spawn' is used and code is importable

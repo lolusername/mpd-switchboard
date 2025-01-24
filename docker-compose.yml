@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms384m -Xmx384m"
+      - path.repo=/usr/share/elasticsearch/snapshots
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - "bootstrap.memory_lock=false"
+      - cluster.routing.allocation.disk.watermark.low=95%
+      - cluster.routing.allocation.disk.watermark.high=98%
+      - cluster.routing.allocation.disk.watermark.flood_stage=99%
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - switchboard_data:/usr/share/elasticsearch/data
+      - ./snapshots:/usr/share/elasticsearch/snapshots
+    networks:
+      - switchboard_default
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: switchboard_api
+    depends_on:
+      - elasticsearch
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/pdf_data
+      - ./api:/app
+    environment:
+      - PDF_DIRECTORY=/app/pdf_data
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - SECRET_KEY=${SECRET_KEY}
+      - PYTHONPATH=/app
+    networks:
+      - switchboard_default
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: switchboard_frontend
+    ports:
+      - "80:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - NUXT_PUBLIC_API_BASE=http://52.23.77.209:8000
+    depends_on:
+      - api
+    networks:
+      - switchboard_default
+
+  ingest:
+    build:
+      context: .
+      dockerfile: elasticsearch-init/Dockerfile
+    environment:
+      - AWS_ACCESS_KEY_ID=AKIAX3DNHQMJFRGVL37P
+      - AWS_SECRET_ACCESS_KEY=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
+      - AWS_DEFAULT_REGION=us-east-1
+    command: ["python", "elasticsearch-init/main.py", "--pdf_dir", "s3://d4bl-switchboard-data", "--es_host", "http://elasticsearch:9200", "--verbose"]
+    networks:
+      - switchboard_default
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./elasticsearch-init:/app/elasticsearch-init
+
+volumes:
+  switchboard_data:
+
+networks:
+  switchboard_default:
+    driver: bridge 

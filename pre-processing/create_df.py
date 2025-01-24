@@ -48,7 +48,7 @@ def process_pdfs(input_folder):
                 full_path = os.path.join(root, file)
                 pdf_files.append((full_path, input_folder))
     
-    pool_size = cpu_count() - 2  # Leave 2 cores free for other tasks
+    pool_size = max(1, cpu_count() - 2)  # Ensure at least 1 process
     with Pool(processes=pool_size) as pool:
         results = list(tqdm(pool.imap(process_single_pdf, pdf_files), total=len(pdf_files), desc="Processing PDFs"))
     

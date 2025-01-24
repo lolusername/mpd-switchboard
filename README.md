@@ -2,6 +2,66 @@
 
 A comprehensive platform for analyzing document collections through advanced text processing, network analysis, and interactive visualizations. Built by Miski Studio for Data for Black Lives (D4BL) to help researchers, journalists, and community members understand complex document collections.
 
+# Switchboard: Document Analysis Platform
+
+## Quick Access
+- **Live Demo**: http://52.23.77.209
+- **Default Login**: 
+  - Username: admin
+  - Password: admin123
+
+## Using the Platform
+
+### Home Page Features
+1. **Dashboard Overview**
+   - Email Communications Stats
+     - Total emails processed
+     - Breakdown of internal (DC.gov) vs external communications
+   - Media Communications Stats
+     - Total media outlet emails
+     - Top media outlet statistics
+     - Active media outlets count
+
+2. **Interactive Visualizations**
+   - Entity Relationship Network: Shows connections between different entities
+   - Email Domain Communication Flow: Heat map showing communication patterns
+   - Email Domain Distribution: Bar chart of email domain frequencies
+   - Hidden Debug Visualizations (Press Shift + D):
+     - Topic UMAP Analysis
+     - Topic t-SNE Analysis
+     - Topic Similarity Network
+
+### Search Interface
+1. **Basic Search**
+   - Enter search terms (minimum 3 characters)
+   - Results show highlighted matches in context
+   - Navigate through pages of results
+   - Each result shows:
+     - Document title
+     - Relevant excerpts with highlighted matches
+     - Relevance score
+
+2. **Document Management**
+   - Pin important documents for quick access
+     - Click the pin icon to save documents
+     - Pinned documents appear in a bar at the top
+     - Click pinned documents to quickly access them
+   - View full document content by clicking any result
+   - Add annotations to documents
+     - Use the notes field at the bottom of document view
+     - Notes are automatically saved
+
+3. **Search Tips**
+   - Use specific terms for better results
+   - Results are sorted by relevance
+   - Hover over highlighted text to see context
+   - Use the sidebar for quick navigation between features
+
+### Navigation
+- Use the sidebar to switch between dashboard and search
+- Logout button located at the bottom of the dashboard
+
+
 ## Project Structure
 switchboard/
 ├── app/                    # Main application
