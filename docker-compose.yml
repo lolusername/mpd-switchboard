@@ -17,8 +17,8 @@ services:
       memlock:
         soft: -1
         hard: -1
-    ports:
-      - "9200:9200"
+    expose:
+      - "9200"
     volumes:
       - switchboard_data:/usr/share/elasticsearch/data
       - ./snapshots:/usr/share/elasticsearch/snapshots
@@ -30,10 +30,8 @@ services:
       context: ./api
       dockerfile: Dockerfile
     container_name: switchboard_api
-    depends_on:
-      - elasticsearch
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ../data:/app/pdf_data
       - ./api:/app
@@ -42,6 +40,8 @@ services:
       - ELASTICSEARCH_HOST=http://elasticsearch:9200
       - SECRET_KEY=${SECRET_KEY}
       - PYTHONPATH=/app
+    depends_on:
+      - elasticsearch
     networks:
       - switchboard_default
     restart: always
@@ -51,13 +51,29 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: switchboard_frontend
-    ports:
-      - "80:3000"
+    expose:
+      - "3000"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
-      - NUXT_PUBLIC_API_BASE=http://52.23.77.209:8000
+      - NUXT_PUBLIC_API_BASE=https://52.23.77.209/api
     depends_on:
+      - api
+    networks:
+      - switchboard_default
+
+  nginx:
+    image: nginx:alpine
+    container_name: switchboard_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - /etc/ssl/certs/selfsigned.crt:/etc/ssl/certs/selfsigned.crt:ro
+      - /etc/ssl/private/selfsigned.key:/etc/ssl/private/selfsigned.key:ro
+    depends_on:
+      - frontend
       - api
     networks:
       - switchboard_default
@@ -67,8 +83,8 @@ services:
       context: .
       dockerfile: elasticsearch-init/Dockerfile
     environment:
-      - AWS_ACCESS_KEY_ID=AKIAX3DNHQMJFRGVL37P
-      - AWS_SECRET_ACCESS_KEY=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
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=us-east-1
     command: ["python", "elasticsearch-init/main.py", "--pdf_dir", "s3://d4bl-switchboard-data", "--es_host", "http://elasticsearch:9200", "--verbose"]
     networks:

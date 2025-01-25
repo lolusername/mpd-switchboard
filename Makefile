@@ -1,3 +1,8 @@
+# EC2 Configuration
+EC2_IP = 52.23.77.209
+EC2_USER = ubuntu
+EC2_KEY = ~/switchboard-final.pem
+
 # Constants
 VENV := $(shell poetry env info --path)
 PYTHON := $(VENV)/bin/python
@@ -112,34 +117,35 @@ email-analysis: check
 	fi
 	@echo "Email network analysis completed. Results saved to ./reports/email_analysis"
 
-# Deploy the application
-deploy: check-env
+# Deploy to EC2
+deploy:
 	@echo "🧹 Cleaning up EC2 instance..."
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
 	@echo "✅ Cleanup complete"
 	@echo "🔑 Testing SSH connection..."
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "echo '✅ SSH connection successful!'"
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "echo '✅ SSH connection successful!'"
 	@echo "📦 Deploying application..."
-	# First, ensure .env exists or copy from .env.production
-	@if [ ! -f .env ]; then \
-		echo "Creating .env from .env.production..."; \
-		cp .env.production .env; \
-	fi
 	# Deploy the application files
-	@rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
+	rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
 		--exclude 'node_modules' \
 		--exclude '.git' \
 		--exclude 'data' \
 		--exclude 'snapshots' \
 		--exclude '*.pyc' \
 		--exclude '__pycache__' \
-		./ $(EC2_USER)@$(EC2_IP):/home/ubuntu/switchboard/app/
+		./ ubuntu@$(EC2_IP):/home/ubuntu/switchboard/app/
+	@echo "🔒 Setting up SSL certificate..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
+		sudo docker-compose down && \
+		sudo apt-get update && \
+		sudo apt-get install -y certbot && \
+		sudo certbot certonly --standalone -d $(EC2_IP).nip.io --agree-tos --non-interactive --email admin@example.com && \
+		sudo ln -sf /etc/letsencrypt/live/$(EC2_IP).nip.io/fullchain.pem /etc/ssl/certs/selfsigned.crt && \
+		sudo ln -sf /etc/letsencrypt/live/$(EC2_IP).nip.io/privkey.pem /etc/ssl/private/selfsigned.key"
 	@echo "🚀 Starting services..."
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
-		if [ ! -f .env ]; then cp .env.production .env; fi && \
-		sudo docker compose down && \
-		sudo docker compose up -d --build --force-recreate"
-	@echo "✨ Deployment complete! Application is running at http://$(EC2_IP)"
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
+		sudo docker-compose up -d --build --force-recreate"
+	@echo "✨ Deployment complete! Application is running at https://$(EC2_IP).nip.io"
 
 # Ingest data from S3 to Elasticsearch
 ingest-s3:

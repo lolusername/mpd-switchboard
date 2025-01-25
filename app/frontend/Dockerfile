@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -19,5 +19,5 @@ EXPOSE 3000
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-# Start the server (changed from preview to start)
+# Start the server
 CMD ["node", ".output/server/index.mjs"]

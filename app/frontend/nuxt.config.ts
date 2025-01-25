@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { defineNuxtConfig } from 'nuxt/config'
 import type { NuxtConfig } from '@nuxt/types'
+import fs from 'fs'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
@@ -15,7 +16,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: process.env.NODE_ENV === 'production' 
-        ? 'http://52.23.77.209:8000'
+        ? 'https://52.23.77.209/api'
         : 'http://localhost:3000'
     }
   },
@@ -23,5 +24,11 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { middleware: ['auth'] },
     '/login': { middleware: [] }
-  }
+  },
+  server: process.env.HTTPS ? {
+    https: {
+      key: fs.readFileSync(process.env.SSL_KEY_FILE || ''),
+      cert: fs.readFileSync(process.env.SSL_CRT_FILE || '')
+    }
+  } : undefined
 })
