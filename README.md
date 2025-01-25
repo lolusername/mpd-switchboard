@@ -5,7 +5,7 @@ A comprehensive platform for analyzing document collections through advanced tex
 # Switchboard: Document Analysis Platform
 
 ## Quick Access
-- **Live Demo**: http://52.23.77.209
+- **Live Demo**: https://switchboard.miski.studio/
 - **Default Login**: 
   - Username: admin
   - Password: admin123
@@ -246,3 +246,88 @@ Copyright © 2024 Data for Black Lives (D4BL)
 Developed by Miski Studio / Atilio Barreda II
 
 All rights reserved. This software and associated documentation files are the proprietary property of Data for Black Lives (D4BL). No part of this software may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of Data for Black Lives (D4BL).
+
+## AWS Deployment Guide
+
+### Prerequisites
+1. AWS Account with EC2 access
+2. A domain name you can configure (for SSL)
+3. SSH key pair for EC2 access
+
+### Step 1: Launch EC2 Instance
+1. Launch a t2.medium Ubuntu instance (Ubuntu 22.04 LTS)
+2. Configure Security Group:
+   - Allow SSH (Port 22) from your IP
+   - Allow HTTP (Port 80) from anywhere
+   - Allow HTTPS (Port 443) from anywhere
+
+### Step 2: Configure Domain & SSL
+1. Add an A record in your domain's DNS settings:
+   ```
+   Type: A
+   Name: switchboard (or your subdomain)
+   Value: Your-EC2-IP
+   TTL: 3600 (or lowest available)
+   ```
+
+### Step 3: Local Setup
+1. Clone this repository
+2. Copy your EC2 key to `~/switchboard-final.pem`
+3. Set correct permissions:
+   ```bash
+   chmod 400 ~/switchboard-final.pem
+   ```
+4. Update the Makefile EC2 configuration:
+   ```makefile
+   EC2_IP = your-ec2-ip
+   EC2_USER = ubuntu
+   EC2_KEY = ~/switchboard-final.pem
+   ```
+
+### Step 4: Initial Deployment
+1. Install Docker on EC2:
+   ```bash
+   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip
+   sudo apt-get update
+   sudo apt-get install -y docker.io docker-compose
+   ```
+
+2. Deploy the application:
+   ```bash
+   make ssl-setup  # Set up SSL certificate
+   make deploy     # Deploy the application
+   ```
+
+### Step 5: Verify Deployment
+1. Check deployment status:
+   ```bash
+   make domain-check
+   ```
+2. Visit your domain (e.g., https://switchboard.yourdomain.com)
+
+### Maintenance Commands
+- `make ssl-status`: Check SSL certificate status
+- `make ssl-renew`: Renew SSL certificate
+- `make deploy`: Redeploy application
+- `make domain-check`: Verify domain and SSL setup
+
+### Troubleshooting
+If deployment fails:
+1. Check container status:
+   ```bash
+   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip "cd /home/ubuntu/switchboard/app && sudo docker-compose ps"
+   ```
+2. View container logs:
+   ```bash
+   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip "cd /home/ubuntu/switchboard/app && sudo docker-compose logs"
+   ```
+3. Verify SSL certificate:
+   ```bash
+   make ssl-status
+   ```
+
+### Security Notes
+- The deployment uses Let's Encrypt for SSL certificates
+- Certificates auto-renew every 90 days
+- Always keep your EC2 security group restricted to necessary ports
+- Regularly update dependencies and system packages

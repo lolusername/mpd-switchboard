@@ -16,7 +16,7 @@ DF_CORPORA := ./df_corpora    # New variable for the output file
 EMAIL_ANALYSIS_DIR := $(OUTPUT_DIR)/email_analysis
 
 # Group all PHONY targets
-.PHONY: check setup preprocess clean install help redact ocr create-df email-analysis deploy ingest-s3
+.PHONY: check setup preprocess clean install help redact ocr create-df email-analysis deploy ingest-s3 ssl-setup ssl-renew ssl-status domain-check
 
 # Ensure pyenv and poetry are available
 check:
@@ -117,35 +117,43 @@ email-analysis: check
 	fi
 	@echo "Email network analysis completed. Results saved to ./reports/email_analysis"
 
-# Deploy to EC2
-deploy:
-	@echo "🧹 Cleaning up EC2 instance..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
-	@echo "✅ Cleanup complete"
-	@echo "🔑 Testing SSH connection..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "echo '✅ SSH connection successful!'"
-	@echo "📦 Deploying application..."
-	# Deploy the application files
-	rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
-		--exclude 'node_modules' \
-		--exclude '.git' \
-		--exclude 'data' \
-		--exclude 'snapshots' \
-		--exclude '*.pyc' \
-		--exclude '__pycache__' \
-		./ ubuntu@$(EC2_IP):/home/ubuntu/switchboard/app/
-	@echo "🔒 Setting up SSL certificate..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
+# SSL and Domain Management
+ssl-setup:
+	@echo "🔒 Setting up SSL certificate for switchboard.miski.studio..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
 		sudo docker-compose down && \
 		sudo apt-get update && \
 		sudo apt-get install -y certbot && \
-		sudo certbot certonly --standalone -d $(EC2_IP).nip.io --agree-tos --non-interactive --email admin@example.com && \
-		sudo ln -sf /etc/letsencrypt/live/$(EC2_IP).nip.io/fullchain.pem /etc/ssl/certs/selfsigned.crt && \
-		sudo ln -sf /etc/letsencrypt/live/$(EC2_IP).nip.io/privkey.pem /etc/ssl/private/selfsigned.key"
-	@echo "🚀 Starting services..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
-		sudo docker-compose up -d --build --force-recreate"
-	@echo "✨ Deployment complete! Application is running at https://$(EC2_IP).nip.io"
+		sudo certbot certonly --standalone \
+			-d switchboard.miski.studio \
+			--agree-tos \
+			--non-interactive \
+			--email admin@miski.studio"
+	@echo "✅ SSL certificate installed"
+
+ssl-renew:
+	@echo "🔄 Renewing SSL certificate..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		sudo docker-compose down && \
+		sudo certbot renew && \
+		sudo docker-compose up -d"
+	@echo "✅ SSL certificate renewed"
+
+ssl-status:
+	@echo "📊 Checking SSL certificate status..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		sudo certbot certificates"
+
+domain-check:
+	@echo "🌐 Checking domain DNS setup..."
+	@echo "Testing DNS resolution for switchboard.miski.studio..."
+	@host switchboard.miski.studio || echo "❌ DNS record not found"
+	@echo "\nTesting SSL certificate..."
+	@curl -sI https://switchboard.miski.studio | head -n 1 || echo "❌ HTTPS not responding"
+	@echo "\nChecking port 80..."
+	@curl -sI http://switchboard.miski.studio | head -n 1 || echo "❌ HTTP not responding"
+
+
 
 # Ingest data from S3 to Elasticsearch
 ingest-s3:
