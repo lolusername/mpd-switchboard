@@ -1,0 +1,231 @@
+{
+  "nodes": [
+    {
+      "id": "US",
+      "group": 1,
+      "size": 43
+    },
+    {
+      "id": "UK",
+      "group": 1,
+      "size": 22
+    },
+    {
+      "id": "BBC",
+      "group": 1,
+      "size": 19
+    },
+    {
+      "id": "Oscar",
+      "group": 1,
+      "size": 19
+    },
+    {
+      "id": "London",
+      "group": 1,
+      "size": 18
+    },
+    {
+      "id": "Hollywood",
+      "group": 1,
+      "size": 18
+    },
+    {
+      "id": "Los Angeles",
+      "group": 1,
+      "size": 9
+    },
+    {
+      "id": "Channel 4",
+      "group": 1,
+      "size": 8
+    },
+    {
+      "id": "ITV",
+      "group": 1,
+      "size": 7
+    },
+    {
+      "id": "Vera Drake",
+      "group": 1,
+      "size": 7
+    }
+  ],
+  "links": [
+    {
+      "source": "US",
+      "target": "UK",
+      "value": 9
+    },
+    {
+      "source": "US",
+      "target": "BBC",
+      "value": 6
+    },
+    {
+      "source": "US",
+      "target": "Oscar",
+      "value": 10
+    },
+    {
+      "source": "US",
+      "target": "Hollywood",
+      "value": 9
+    },
+    {
+      "source": "US",
+      "target": "Los Angeles",
+      "value": 7
+    },
+    {
+      "source": "US",
+      "target": "Channel 4",
+      "value": 4
+    },
+    {
+      "source": "US",
+      "target": "ITV",
+      "value": 2
+    },
+    {
+      "source": "US",
+      "target": "Vera Drake",
+      "value": 1
+    },
+    {
+      "source": "UK",
+      "target": "BBC",
+      "value": 2
+    },
+    {
+      "source": "UK",
+      "target": "Oscar",
+      "value": 5
+    },
+    {
+      "source": "UK",
+      "target": "London",
+      "value": 6
+    },
+    {
+      "source": "UK",
+      "target": "Hollywood",
+      "value": 2
+    },
+    {
+      "source": "UK",
+      "target": "Vera Drake",
+      "value": 2
+    },
+    {
+      "source": "BBC",
+      "target": "London",
+      "value": 4
+    },
+    {
+      "source": "BBC",
+      "target": "Hollywood",
+      "value": 5
+    },
+    {
+      "source": "BBC",
+      "target": "Los Angeles",
+      "value": 1
+    },
+    {
+      "source": "BBC",
+      "target": "Channel 4",
+      "value": 4
+    },
+    {
+      "source": "BBC",
+      "target": "ITV",
+      "value": 7
+    },
+    {
+      "source": "BBC",
+      "target": "Vera Drake",
+      "value": 2
+    },
+    {
+      "source": "Oscar",
+      "target": "London",
+      "value": 3
+    },
+    {
+      "source": "Oscar",
+      "target": "Hollywood",
+      "value": 4
+    },
+    {
+      "source": "Oscar",
+      "target": "Los Angeles",
+      "value": 2
+    },
+    {
+      "source": "Oscar",
+      "target": "Vera Drake",
+      "value": 3
+    },
+    {
+      "source": "London",
+      "target": "Hollywood",
+      "value": 3
+    },
+    {
+      "source": "London",
+      "target": "Channel 4",
+      "value": 1
+    },
+    {
+      "source": "London",
+      "target": "ITV",
+      "value": 1
+    },
+    {
+      "source": "London",
+      "target": "Vera Drake",
+      "value": 3
+    },
+    {
+      "source": "Hollywood",
+      "target": "Los Angeles",
+      "value": 4
+    },
+    {
+      "source": "Hollywood",
+      "target": "Channel 4",
+      "value": 1
+    },
+    {
+      "source": "Hollywood",
+      "target": "ITV",
+      "value": 1
+    },
+    {
+      "source": "Hollywood",
+      "target": "Vera Drake",
+      "value": 2
+    },
+    {
+      "source": "Los Angeles",
+      "target": "Vera Drake",
+      "value": 2
+    },
+    {
+      "source": "Channel 4",
+      "target": "ITV",
+      "value": 1
+    },
+    {
+      "source": "Channel 4",
+      "target": "Vera Drake",
+      "value": 1
+    },
+    {
+      "source": "ITV",
+      "target": "Vera Drake",
+      "value": 1
+    }
+  ]
+}

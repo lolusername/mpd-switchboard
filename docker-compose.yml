@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   elasticsearch:
@@ -6,17 +6,22 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms384m -Xmx384m"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
       - path.repo=/usr/share/elasticsearch/snapshots
       - cluster.routing.allocation.disk.threshold_enabled=false
       - "bootstrap.memory_lock=false"
       - cluster.routing.allocation.disk.watermark.low=95%
       - cluster.routing.allocation.disk.watermark.high=98%
       - cluster.routing.allocation.disk.watermark.flood_stage=99%
+      - xpack.security.enabled=false
+      - "ES_HEAP_SIZE=256m"
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     expose:
       - "9200"
     volumes:
@@ -24,21 +29,26 @@ services:
       - ./snapshots:/usr/share/elasticsearch/snapshots
     networks:
       - switchboard_default
+    restart: unless-stopped
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: switchboard_api
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     volumes:
       - ../data:/app/pdf_data
       - ./api:/app
     environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SECRET_KEY=${SECRET_KEY:-development_secret_key}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
       - PDF_DIRECTORY=/app/pdf_data
-      - ELASTICSEARCH_HOST=http://elasticsearch:9200
-      - SECRET_KEY=${SECRET_KEY}
       - PYTHONPATH=/app
     depends_on:
       - elasticsearch
@@ -51,12 +61,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: switchboard_frontend
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
-      - HOST=0.0.0.0
-      - PORT=3000
-      - NUXT_PUBLIC_API_BASE=https://52.23.77.209/api
+      - NODE_ENV=${NODE_ENV:-development}
+      # This will be http://localhost/api in dev and https://52.23.77.209/api in prod
+      - NUXT_PUBLIC_API_BASE=${API_BASE_URL:-http://localhost/api}
     depends_on:
       - api
     networks:
@@ -67,36 +77,54 @@ services:
     container_name: switchboard_nginx
     ports:
       - "80:80"
-      - "443:443"
+      - "${SSL_PORT:-443}:443"
     volumes:
-      - ./nginx:/etc/nginx/conf.d
-      - /etc/ssl/certs/selfsigned.crt:/etc/ssl/certs/selfsigned.crt:ro
-      - /etc/ssl/private/selfsigned.key:/etc/ssl/private/selfsigned.key:ro
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${SSL_CERT_PATH:-./certs/selfsigned.crt}:${SSL_CERT:-/etc/ssl/certs/selfsigned.crt}:ro
+      - ${SSL_KEY_PATH:-./certs/selfsigned.key}:${SSL_KEY:-/etc/ssl/private/selfsigned.key}:ro
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - SERVER_NAME=${SERVER_NAME:-localhost}
+      - SSL_CERT=${SSL_CERT:-/etc/ssl/certs/selfsigned.crt}
+      - SSL_KEY=${SSL_KEY:-/etc/ssl/private/selfsigned.key}
     depends_on:
       - frontend
       - api
     networks:
       - switchboard_default
+    # This command will handle both environments:
+    # - In development: Only use HTTP server block
+    # - In production: Use both HTTP (with redirect) and HTTPS blocks
+    command: >
+      /bin/sh -c "
+      if [ \"$$NODE_ENV\" = \"production\" ]; then
+        envsubst '$$SERVER_NAME $$SSL_CERT $$SSL_KEY' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf;
+      else
+        grep -v 'listen 443' /etc/nginx/templates/default.conf.template | grep -v 'ssl_certificate' | envsubst '$$SERVER_NAME' > /etc/nginx/conf.d/default.conf;
+      fi
+      && nginx -g 'daemon off;'"
+
+volumes:
+  elasticsearch_data:
+
+networks:
+  switchboard_default:
+    driver: bridge
 
   ingest:
     build:
-      context: .
-      dockerfile: elasticsearch-init/Dockerfile
+      context: ./ingest
+      dockerfile: Dockerfile
     environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_REGION=${AWS_REGION}
     command: ["python", "elasticsearch-init/main.py", "--pdf_dir", "s3://d4bl-switchboard-data", "--es_host", "http://elasticsearch:9200", "--verbose"]
     networks:
       - switchboard_default
     depends_on:
       - elasticsearch
     volumes:
-      - ./elasticsearch-init:/app/elasticsearch-init
-
-volumes:
-  switchboard_data:
-
-networks:
-  switchboard_default:
-    driver: bridge 
+      - ./elasticsearch-init:/app/elasticsearch-init 

@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "thesis-analysis"
+version = "0.1.0"
+description = "Topic modeling and entity network analysis for thesis"
+authors = ["Your Name <your.email@example.com>"]
+packages = []
+
+[tool.poetry.dependencies]
+python = "~3.10.13"
+pandas = "^2.0.0"
+networkx = "^3.0"
+pdfminer-six = "^20221105"
+tqdm = "^4.65.0"
+spacy = "^3.5.0"
+umap-learn = "^0.5.3"
+sentence-transformers = "^2.2.2"
+bertopic = "^0.15.0"
+scikit-learn = "^1.2.2"
+numpy = "^1.24.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api" 

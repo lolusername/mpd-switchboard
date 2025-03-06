@@ -3,6 +3,8 @@
 # Variables
 # Check if docker-compose exists, otherwise use 'docker compose'
 DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
+# For EC2, always use docker-compose
+EC2_DOCKER_COMPOSE := docker-compose
 INGEST_COMPOSE_FILE = docker-compose.ingest.yml
 EC2_IP := $(shell aws ec2 describe-instances \
     --instance-ids i-09769d9810bdeae42 \
@@ -27,8 +29,130 @@ help:
 	@echo "  down          - Stop containers"
 	@echo "  help          - Show this help message"
 
-ingest:
-	$(DOCKER_COMPOSE) -f $(INGEST_COMPOSE_FILE) run --rm ingest
+# Local development commands
+rebuild:
+	@echo "🔧 Setting up system requirements..."
+	@if [ "$(shell uname)" = "Darwin" ]; then \
+		docker run -it --rm --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh -c "sysctl -w vm.max_map_count=262144" || true; \
+	else \
+		sudo sysctl -w vm.max_map_count=262144 || true; \
+	fi
+	@echo "🔄 Rebuilding containers..."
+	$(DOCKER_COMPOSE) down || true
+	$(DOCKER_COMPOSE) rm -f || true
+	$(DOCKER_COMPOSE) build --no-cache
+	@echo "🚀 Starting services..."
+	NODE_ENV=development $(DOCKER_COMPOSE) up -d --force-recreate --no-deps --remove-orphans
+
+up:
+	@echo "🚀 Starting services in development mode..."
+	NODE_ENV=development $(DOCKER_COMPOSE) up -d
+
+down:
+	@echo "🛑 Stopping services..."
+	$(DOCKER_COMPOSE) down
+
+# Deploy to EC2
+deploy:
+	@if [ -z "$(EC2_IP)" ]; then \
+		echo "❌ Error: EC2_IP is empty. Instance might be stopped."; \
+		echo "Try running: make force-restart-instance"; \
+		exit 1; \
+	fi
+	@echo "🧹 Cleaning up EC2 instance..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		sudo systemctl restart docker && \
+		cd /home/ubuntu/switchboard/app && \
+		sudo docker-compose down && \
+		sudo docker system prune -af"
+	@echo "✅ Cleanup complete"
+	@echo "🔑 Testing SSH connection..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "echo '✅ SSH connection successful!'"
+	@echo "📦 Deploying application..."
+	# First, ensure .env exists or copy from .env.production
+	@if [ ! -f .env ]; then \
+		echo "Creating .env from .env.production..."; \
+		cp .env.production .env; \
+	fi
+	# Deploy the application files
+	rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
+		--exclude 'node_modules' \
+		--exclude '.git' \
+		--exclude 'data' \
+		--exclude 'snapshots' \
+		--exclude '*.pyc' \
+		--exclude '__pycache__' \
+		--exclude 'certs' \
+		./ ubuntu@$(EC2_IP):/home/ubuntu/switchboard/app/
+	@echo "🔒 Verifying SSL certificates..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		sudo certbot certificates | grep -q 'switchboard.miski.studio' || \
+		(sudo certbot certonly --standalone \
+			-d switchboard.miski.studio \
+			--agree-tos \
+			--non-interactive \
+			--email admin@miski.studio)"
+	@echo "🚀 Starting services in production mode..."
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		cd /home/ubuntu/switchboard/app && \
+		if [ ! -f .env ]; then cp .env.production .env; fi && \
+		NODE_ENV=production sudo -E docker-compose down && \
+		NODE_ENV=production sudo -E docker-compose build --no-cache && \
+		NODE_ENV=production sudo -E docker-compose up -d --force-recreate"
+	@echo "🔍 Verifying deployment..."
+	@sleep 10
+	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
+		cd /home/ubuntu/switchboard/app && \
+		sudo docker-compose ps && \
+		sudo docker exec switchboard_nginx nginx -t"
+	@echo "✨ Deployment complete! Application is running at https://switchboard.miski.studio"
+	@echo "ℹ️  You can check the status with: make check-deployment"
+
+# Add this command to check logs
+check-rebuild:
+	@echo "Checking container logs..."
+	@echo "\nElasticsearch logs:"
+	$(DOCKER_COMPOSE) logs elasticsearch
+	@echo "\nAPI logs:"
+	$(DOCKER_COMPOSE) logs api
+	@echo "\nFrontend logs:"
+	$(DOCKER_COMPOSE) logs frontend
+	@echo "\nNginx logs:"
+	$(DOCKER_COMPOSE) logs nginx
+
+logs:
+	$(DOCKER_COMPOSE) logs -f
+
+# Build without starting
+build:
+	$(DOCKER_COMPOSE) build
+
+# Rebuild specific service
+rebuild-service:
+	$(DOCKER_COMPOSE) build $(service)
+	$(DOCKER_COMPOSE) up -d $(service)
+
+# Clean everything
+clean:
+	$(DOCKER_COMPOSE) down -v
+	$(DOCKER_COMPOSE) system prune -f
+	rm -rf certs/*
+
+# Add this to your Makefile
+check-deployment:
+	@echo "Checking deployment status..."
+	@echo "\nContainer Status:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker ps"
+	@echo "\nNginx Logs:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_nginx --tail 20"
+	@echo "\nFrontend Logs:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_frontend --tail 20"
+	@echo "\nAPI Logs:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_api --tail 20"
+	@echo "\nSSL Certificate Status:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo certbot certificates"
+	@echo "\nListening Ports:"
+	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo netstat -tulpn | grep LISTEN"
 
 # EC2 connection details
 EC2_USER := ubuntu
@@ -99,40 +223,6 @@ deep-clean-ec2:
 		mkdir -p $(APP_DIR)/app && \
 		echo "Deep cleanup complete!"'
 
-# Deploy to EC2
-deploy:
-	@if [ -z "$(EC2_IP)" ]; then \
-		echo "❌ Error: EC2_IP is empty. Instance might be stopped."; \
-		echo "Try running: make force-restart-instance"; \
-		exit 1; \
-	fi
-	@echo "🧹 Cleaning up EC2 instance..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "sudo systemctl restart docker && sudo docker system prune -af"
-	@echo "✅ Cleanup complete"
-	@echo "🔑 Testing SSH connection..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "echo '✅ SSH connection successful!'"
-	@echo "📦 Deploying application..."
-	# First, ensure .env exists or copy from .env.production
-	@if [ ! -f .env ]; then \
-		echo "Creating .env from .env.production..."; \
-		cp .env.production .env; \
-	fi
-	# Deploy the application files
-	rsync -avz --timeout=60 --progress -e "ssh -i $(EC2_KEY)" \
-		--exclude 'node_modules' \
-		--exclude '.git' \
-		--exclude 'data' \
-		--exclude 'snapshots' \
-		--exclude '*.pyc' \
-		--exclude '__pycache__' \
-		./ ubuntu@$(EC2_IP):/home/ubuntu/switchboard/app/
-	@echo "🚀 Starting services..."
-	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "cd /home/ubuntu/switchboard/app && \
-		if [ ! -f .env ]; then cp .env.production .env; fi && \
-		sudo docker-compose down && \
-		sudo docker-compose up -d --build --force-recreate"
-	@echo "✨ Deployment complete! Application is running at http://$(EC2_IP)"
-
 # Update reboot command with SSH service check
 reboot-instance:
 	@echo "🔄 Rebooting EC2 instance..."
@@ -177,102 +267,6 @@ force-restart-instance:
 test-ssh:
 	@echo "Testing SSH connection with verbose output..."
 	ssh -v -i $(PEM_PATH) -o ConnectTimeout=10 -o StrictHostKeyChecking=no $(EC2_USER)@$(EC2_IP) "echo 'SSH connection successful!'"
-
-# Local development commands
-rebuild:
-	@echo "🔧 Setting up system requirements..."
-	@if [ "$(shell uname)" = "Darwin" ]; then \
-		docker run -it --rm --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh -c "sysctl -w vm.max_map_count=262144" || true; \
-	else \
-		sudo sysctl -w vm.max_map_count=262144 || true; \
-	fi
-	@echo "🔄 Rebuilding containers..."
-	$(DOCKER_COMPOSE) down || true
-	$(DOCKER_COMPOSE) rm -f || true
-	$(DOCKER_COMPOSE) build --no-cache
-	@echo "🚀 Starting services..."
-	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps --remove-orphans
-
-# Add this command to check logs
-check-rebuild:
-	@echo "Checking container logs..."
-	@echo "\nElasticsearch logs:"
-	$(DOCKER_COMPOSE) logs elasticsearch
-	@echo "\nAPI logs:"
-	$(DOCKER_COMPOSE) logs api
-	@echo "\nFrontend logs:"
-	$(DOCKER_COMPOSE) logs frontend
-
-logs:
-	$(DOCKER_COMPOSE) logs -f
-
-# Build without starting
-build:
-	$(DOCKER_COMPOSE) build
-
-# Rebuild specific service
-rebuild-service:
-	$(DOCKER_COMPOSE) build $(service)
-	$(DOCKER_COMPOSE) up -d $(service)
-
-# Clean everything
-clean:
-	$(DOCKER_COMPOSE) down -v
-	$(DOCKER_COMPOSE) system prune -f
-
-# Initialize Elasticsearch snapshot repository
-init-snapshots:
-	@echo "📁 Initializing snapshot repository..."
-	@curl -X PUT "localhost:9200/_snapshot/switchboard_backup" \
-		-H "Content-Type: application/json" \
-		-d '{"type": "fs", "settings": {"location": "/usr/share/elasticsearch/snapshots"}}'
-
-# Create Elasticsearch snapshot
-snapshot: init-snapshots
-	@echo "📸 Creating Elasticsearch snapshot..."
-	@curl -X PUT "localhost:9200/_snapshot/switchboard_backup/snapshot_$(shell date +%Y%m%d_%H%M%S)?wait_for_completion=true" \
-		-H "Content-Type: application/json" \
-		-d '{"indices": "pdf_documents","ignore_unavailable": true,"include_global_state": false}'
-	@echo "✅ Snapshot created in ./snapshots"
-
-# List all snapshots
-list-snapshots:
-	@echo "📋 Listing available snapshots..."
-	@curl -X GET "localhost:9200/_snapshot/switchboard_backup/_all"
-
-# Add this to your Makefile
-check-deployment:
-	@echo "Checking deployment status..."
-	@echo "\nContainer Status:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker ps"
-	@echo "\nFrontend Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_frontend --tail 20"
-	@echo "\nAPI Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_api --tail 20"
-	@echo "\nPublic IP:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "curl -s http://169.254.169.254/latest/meta-data/public-ipv4"
-	@echo "\nListening Ports:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo netstat -tulpn | grep LISTEN"
-
-# Add these debug commands
-check-es:
-	@echo "Elasticsearch Logs:"
-	$(DOCKER_COMPOSE) logs elasticsearch
-
-check-api:
-	@echo "API Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_api"
-
-check-frontend:
-	@echo "Frontend Logs:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker logs switchboard_frontend"
-
-check-all:
-	@echo "Container Status:"
-	@ssh -i $(EC2_KEY) $(EC2_USER)@$(EC2_IP) "sudo docker ps -a"
-	@make check-es
-	@make check-api
-	@make check-frontend
 
 # Add this command to check EC2 status
 check-ec2:
