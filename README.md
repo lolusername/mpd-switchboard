@@ -1,6 +1,6 @@
 # Switchboard: Document Analysis Platform
 
-A comprehensive platform for analyzing document collections through advanced text processing, network analysis, and interactive visualizations. Built by Miski Studio for Data for Black Lives (D4BL) to help researchers, journalists, and community members understand complex document collections.
+A comprehensive platform for analyzing document collections through advanced text processing, network analysis, and interactive visualizations. Built by Miski Studio to help researchers, journalists, and community members understand complex document collections.
 
 # Switchboard: Document Analysis Platform
 
@@ -129,27 +129,12 @@ switchboard/
 
 ## Quick Start
 
-1. Prerequisites:
-   - Python 3.12+
-   - Node.js 20+
-   - Docker 20+
-   - Poetry
-   - Make
-
-2. Clone and setup:
-   ```bash
-   git clone https://github.com/d4bl/switchboard.git
-   cd switchboard/app
-   poetry install
-   cd frontend && npm install
-   ```
-
-3. Start services:
+1. Start services:
    ```bash
    make up
    ```
 
-4. Access:
+2. Access:
    - Frontend: http://localhost:3000
    - API Docs: http://localhost:8000/docs
    - Elasticsearch: http://localhost:9200
@@ -199,11 +184,8 @@ We welcome contributions! Key areas:
 - Documentation improvements
 
 ## License
-
-Copyright © 2024 Data for Black Lives (D4BL)
 Developed by Miski Studio / Atilio Barreda II
 
-All rights reserved. This software and associated documentation files are the proprietary property of Data for Black Lives (D4BL). No part of this software may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of Data for Black Lives (D4BL).
 
 
 ## Make Commands
@@ -241,11 +223,6 @@ All rights reserved. This software and associated documentation files are the pr
 - Analysis outputs in ./reports/email_analysis
 - Metadata stored in ./reports/meta_data.json
 
-## License
-Copyright © 2024 Data for Black Lives (D4BL)
-Developed by Miski Studio / Atilio Barreda II
-
-All rights reserved. This software and associated documentation files are the proprietary property of Data for Black Lives (D4BL). No part of this software may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of Data for Black Lives (D4BL).
 
 ## AWS Deployment Guide
 
