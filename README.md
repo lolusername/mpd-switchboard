@@ -433,247 +433,236 @@ Built by Miski Studio for Data for Black Lives
 
 ## Developer Learning Guide
 
-### Prerequisites Knowledge
+<details>
+<summary>🎓 Prerequisites</summary>
+
 - Basic JavaScript/TypeScript
 - Basic Python (NumPy, Pandas)
 - HTML/CSS fundamentals
 - Git basics
+</details>
 
-### Learning Path
+<details>
+<summary>🚀 Frontend Development (2-3 months)</summary>
 
-#### 1. Modern Frontend Development (2-3 months)
-1. **Vue.js & Nuxt Fundamentals** (2-3 weeks)
-   ```bash
-   # Start with Vue 3 Composition API
-   npm create vue@latest my-first-vue-app
-   cd my-first-vue-app
-   npm install
-   npm run dev
-   ```
-   - Learn Vue 3 Composition API basics
-     - `ref()`, `reactive()`, `computed()`
-     - Components and props
-     - Event handling
-     - Lifecycle hooks
-   - Practice Projects:
-     - Todo app with local storage
-     - Simple search interface
-     - Data table with sorting/filtering
+### Vue.js & Nuxt Fundamentals (2-3 weeks)
+```bash
+# Start with Vue 3 Composition API
+npm create vue@latest my-first-vue-app
+cd my-first-vue-app
+npm install
+npm run dev
+```
 
-2. **State Management & API Integration** (2 weeks)
-   ```typescript
-   // Example of composable for API calls
-   export function useApi() {
-     const data = ref(null)
-     const error = ref(null)
-     const loading = ref(false)
+#### Core Concepts
+- Vue 3 Composition API
+  - `ref()`, `reactive()`, `computed()`
+  - Components and props
+  - Event handling
+  - Lifecycle hooks
 
-     async function fetchData(url: string) {
-       loading.value = true
-       try {
-         const response = await fetch(url)
-         data.value = await response.json()
-       } catch (e) {
-         error.value = e
-       } finally {
-         loading.value = false
-       }
-     }
+#### Practice Projects
+1. Todo App
+   - Local storage integration
+   - CRUD operations
+   - State management
 
-     return { data, error, loading, fetchData }
-   }
-   ```
-   - Learn Pinia for state management
-   - Understand HTTP requests and REST APIs
-   - Practice error handling
-   - Implement loading states
+2. Search Interface
+   - API integration
+   - Real-time updates
+   - Error handling
 
-3. **Modern CSS & UI Design** (2 weeks)
-   ```bash
-   # Set up Tailwind CSS in your project
-   npm install -D tailwindcss postcss autoprefixer
-   npx tailwindcss init
-   ```
-   - Master Tailwind CSS
-   - Learn CSS Grid and Flexbox
-   - Implement responsive design
-   - Study UI/UX principles
+### State Management & API Integration (2 weeks)
+```typescript
+// Example of composable for API calls
+export function useApi() {
+  const data = ref(null)
+  const error = ref(null)
+  const loading = ref(false)
 
-#### 2. Backend Development (2-3 months)
-1. **Python FastAPI Fundamentals** (2-3 weeks)
-   ```python
-   # Basic FastAPI setup
-   from fastapi import FastAPI
-   from pydantic import BaseModel
+  async function fetchData(url: string) {
+    loading.value = true
+    try {
+      const response = await fetch(url)
+      data.value = await response.json()
+    } catch (e) {
+      error.value = e
+    } finally {
+      loading.value = false
+    }
+  }
 
-   app = FastAPI()
+  return { data, error, loading, fetchData }
+}
+```
 
-   class Item(BaseModel):
-       name: str
-       description: str
+### Modern CSS & UI Design (2 weeks)
+```bash
+# Set up Tailwind CSS
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init
+```
+</details>
 
-   @app.post("/items/")
-   async def create_item(item: Item):
-       return item
-   ```
-   - Learn FastAPI basics
-   - Understand async/await in Python
-   - API route handling
-   - Request/Response models with Pydantic
+<details>
+<summary>⚙️ Backend Development (2-3 months)</summary>
 
-2. **Database & Search Integration** (3-4 weeks)
-   ```python
-   # Elasticsearch client setup
-   from elasticsearch import Elasticsearch
+### FastAPI Fundamentals (2-3 weeks)
+```python
+# Basic FastAPI setup
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-   es = Elasticsearch(["http://localhost:9200"])
+app = FastAPI()
 
-   # Basic search function
-   async def search_documents(query: str):
-       result = es.search(
-           index="documents",
-           body={
-               "query": {
-                   "multi_match": {
-                       "query": query,
-                       "fields": ["title", "content"]
-                   }
-               }
-           }
-       )
-       return result["hits"]["hits"]
-   ```
-   - Learn Elasticsearch basics
-   - Understand document indexing
-   - Implement search queries
-   - Handle pagination and filtering
+class Item(BaseModel):
+    name: str
+    description: str
 
-3. **Document Processing** (2-3 weeks)
-   ```python
-   # Basic PDF processing
-   import pypdf
-   from PIL import Image
-   import pytesseract
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+```
 
-   def extract_text(pdf_path: str) -> str:
-       # For text PDFs
-       with open(pdf_path, 'rb') as file:
-           reader = pypdf.PdfReader(file)
-           text = ""
-           for page in reader.pages:
-               text += page.extract_text()
-       return text
+### Database & Search (3-4 weeks)
+```python
+# Elasticsearch setup
+from elasticsearch import Elasticsearch
 
-   def process_scanned_pdf(pdf_path: str) -> str:
-       # For scanned PDFs
-       images = convert_pdf_to_images(pdf_path)
-       text = ""
-       for image in images:
-           text += pytesseract.image_to_string(image)
-       return text
-   ```
-   - Learn PDF processing
-   - Understand OCR concepts
-   - Image preprocessing
-   - Text extraction and cleaning
+es = Elasticsearch(["http://localhost:9200"])
 
-#### 3. DevOps & Deployment (1-2 months)
-1. **Docker & Containerization** (2 weeks)
-   ```dockerfile
-   # Basic Dockerfile for Python app
-   FROM python:3.12-slim
-   WORKDIR /app
-   COPY requirements.txt .
-   RUN pip install -r requirements.txt
-   COPY . .
-   CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]
-   ```
-   - Learn Docker basics
-   - Understand container networking
-   - Multi-container applications
-   - Docker Compose
+async def search_documents(query: str):
+    result = es.search(
+        index="documents",
+        body={
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["title", "content"]
+                }
+            }
+        }
+    )
+    return result["hits"]["hits"]
+```
 
-2. **AWS & Cloud Deployment** (2-3 weeks)
-   ```bash
-   # Basic AWS CLI commands
-   aws ec2 describe-instances
-   aws s3 ls
-   aws route53 list-hosted-zones
-   ```
-   - Learn AWS fundamentals
-   - EC2 instance management
-   - Domain and DNS configuration
-   - SSL certificate setup
+### Document Processing (2-3 weeks)
+```python
+# PDF & OCR Processing
+import pypdf
+from PIL import Image
+import pytesseract
 
-### Practice Projects
-1. **Simple Search Engine** (2 weeks)
-   - Build basic search UI
-   - Implement Elasticsearch
-   - Add result highlighting
+def extract_text(pdf_path: str) -> str:
+    with open(pdf_path, 'rb') as file:
+        reader = pypdf.PdfReader(file)
+        return "".join(page.extract_text() for page in reader.pages)
 
-2. **Document Processor** (2 weeks)
-   - PDF text extraction
-   - Basic OCR implementation
-   - Document storage
+def process_scanned_pdf(pdf_path: str) -> str:
+    images = convert_pdf_to_images(pdf_path)
+    return "".join(pytesseract.image_to_string(image) for image in images)
+```
+</details>
 
-3. **Full Stack App** (3-4 weeks)
-   - Combine all components
-   - Add authentication
-   - Deploy to AWS
+<details>
+<summary>🛠️ DevOps & Deployment (1-2 months)</summary>
 
-### Resources
-1. **Documentation**
-   - [Vue.js Guide](https://vuejs.org/guide/introduction.html)
-   - [FastAPI Documentation](https://fastapi.tiangolo.com/)
-   - [Elasticsearch Guide](https://www.elastic.co/guide/index.html)
+### Docker & Containerization
+```dockerfile
+# Python API Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]
+```
 
-2. **Courses**
-   - Vue Mastery (Vue.js)
-   - TestDriven.io (FastAPI)
-   - AWS Certified Developer
+### AWS Setup
+```bash
+# Essential AWS commands
+aws configure                    # Set up credentials
+aws ec2 describe-instances      # List EC2 instances
+aws s3 ls                       # List S3 buckets
+aws route53 list-hosted-zones   # List DNS zones
+```
+</details>
 
-3. **Books**
-   - "Full Stack FastAPI, React, and MongoDB" by Shubham Sarda
-   - "Learning Elasticsearch" by Abhishek Andhavarapu
-   - "Docker in Practice" by Ian Miell & Aidan Hobson Sayers
+<details>
+<summary>🏗️ Practice Projects</summary>
 
-### Development Tips
-1. **Start Small**
-   - Build components in isolation
-   - Use dummy data initially
-   - Add features incrementally
+### 1. Simple Search Engine (2 weeks)
+- Frontend search interface
+- Elasticsearch integration
+- Result highlighting
+- Basic filtering
 
-2. **Testing Strategy**
-   ```bash
-   # Frontend testing
-   npm run test:unit
+### 2. Document Processor (2 weeks)
+- PDF text extraction
+- OCR implementation
+- Document storage
+- Progress tracking
 
-   # Backend testing
-   pytest tests/
-   ```
-   - Write unit tests early
-   - Use component testing
-   - Implement integration tests
+### 3. Full Stack App (3-4 weeks)
+- User authentication
+- Document management
+- Search functionality
+- AWS deployment
+</details>
 
-3. **Code Organization**
-   ```
-   project/
-   ├── frontend/
-   │   ├── components/
-   │   ├── composables/
-   │   └── pages/
-   ├── backend/
-   │   ├── api/
-   │   ├── services/
-   │   └── models/
-   └── docker/
-   ```
-   - Follow clear structure
-   - Use meaningful names
-   - Keep components small
+<details>
+<summary>📚 Learning Resources</summary>
 
-4. **Performance Considerations**
-   - Implement caching
-   - Use pagination
-   - Optimize search queries
-   - Monitor resource usage
+### Documentation
+- [Vue.js Guide](https://vuejs.org/guide/introduction.html)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Elasticsearch Guide](https://www.elastic.co/guide/index.html)
+
+### Video Courses
+- Vue Mastery (Vue.js)
+- TestDriven.io (FastAPI)
+- AWS Certified Developer
+
+### Books
+- "Full Stack FastAPI, React, and MongoDB"
+- "Learning Elasticsearch"
+- "Docker in Practice"
+</details>
+
+<details>
+<summary>💡 Development Tips</summary>
+
+### Start Small
+- Build components in isolation
+- Use dummy data initially
+- Add features incrementally
+
+### Testing Strategy
+```bash
+# Frontend tests
+npm run test:unit
+
+# Backend tests
+pytest tests/
+```
+
+### Code Organization
+```
+project/
+├── frontend/
+│   ├── components/
+│   ├── composables/
+│   └── pages/
+├── backend/
+│   ├── api/
+│   ├── services/
+│   └── models/
+└── docker/
+```
+
+### Performance Tips
+- Implement caching
+- Use pagination
+- Optimize search queries
+- Monitor resource usage
+</details>
