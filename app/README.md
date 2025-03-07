@@ -1,101 +1,157 @@
 # Switchboard
 
-A document processing and search platform that makes your PDFs searchable and analyzable.
+A document search platform for D4BL that makes email PDFs searchable and analyzable.
 
 ## What It Does
-- Processes PDF documents (including scanned ones)
-- Makes text searchable and analyzable 
-- Provides a web interface to search and explore documents
-- Runs on Docker for easy deployment
+- Processes email PDF documents
+- Makes text searchable with semantic search capabilities
+- Provides a modern web interface to search and explore documents
+- Highlights relevant text snippets in search results
+- Allows pinning and annotating important documents
 
 ## Tech Stack
-- Python 3.12 (backend)
-- FastAPI (API)
-- Elasticsearch 8.12.2 (search)
-- Nuxt.js (frontend)
+- Python 3.12 (FastAPI backend)
+- Elasticsearch OSS 7.10.2 (search engine)
+- Nuxt 3 (Vue.js frontend)
+- Nginx (reverse proxy)
 - Docker & Docker Compose
 
-## Quick Start
+## Development Setup
 
-1. Prerequisites:
-   - Python 3.12
-   - Node.js 20+
-   - Docker 20+
-   - Poetry
+### Prerequisites
+- Docker & Docker Compose
+- Make
 
-2. Clone and setup:
-   git clone https://github.com/yourusername/switchboard.git
+### Local Development
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/d4bl/switchboard.git
    cd switchboard/app
-   poetry install
-   cd frontend && npm install
+   ```
 
-3. Start services:
-   # Start everything
-   make up
+2. Start the development environment:
+   ```bash
+   make rebuild
+   ```
+   This will:
+   - Build all Docker containers
+   - Start the services in development mode
+   - Set up Elasticsearch with proper settings
 
-   # Or individual services
-   make rebuild-service service=api
-   make rebuild-service service=frontend
+3. Access the application:
+   - Web UI: http://localhost
+   - API: http://localhost/api
+   - API Documentation: http://localhost/api/docs
 
-4. Access:
-   - Web UI: http://localhost:3000 
-   - API Docs: http://localhost:8000/docs
-   - Elasticsearch: http://localhost:9200
+### Development Workflow
+- Frontend code is in `frontend/`
+- Backend code is in `api/`
+- Nginx configurations in `nginx/`
+  - `development.conf` - Local development
+  - `production.conf` - Production deployment
 
-## Development
+### Common Development Commands
+```bash
+# Start all services
+make rebuild
 
-Project Structure:
-app/
-├── api/                 # FastAPI backend
-├── frontend/           # Nuxt.js frontend
-├── elasticsearch-init/ # Search setup
-├── docker-compose.yml  # Container config
-└── Makefile           # Build commands
+# View logs
+make logs
 
-Common Commands:
-- make logs            # View logs
-- make rebuild        # Rebuild everything
-- make clean          # Clean up
-- make deploy-files   # Deploy to EC2
+# Stop all services
+make down
 
-Making Changes:
-- Backend: Edit files in api/, changes auto-reload
-- Frontend: Edit files in frontend/, changes hot-reload
-- Search: Edit elasticsearch-init/, then rebuild that service
+# Check service status
+make check-rebuild
+```
 
-## Document Processing
+## Production Deployment
 
-1. Upload PDFs to /data directory
-2. System automatically:
-   - Extracts text (using pdfminer.six)
-   - Runs OCR if needed (using Tesseract)
-   - Indexes in Elasticsearch
-   - Makes searchable via API/UI
+### Prerequisites
+- AWS EC2 instance
+- Domain name pointing to EC2 (currently using switchboard.miski.studio)
+- SSL certificates (handled by Let's Encrypt)
 
-## Deployment
+### Deployment Steps
+1. Ensure your AWS credentials are configured
 
-1. Configure AWS:
-   - Update EC2 host in environment
-   - Ensure security groups allow ports 3000, 8000, 9200
+2. Deploy to production:
+   ```bash
+   make deploy
+   ```
+   This will:
+   - Clean up the EC2 instance
+   - Copy application files
+   - Set up SSL certificates
+   - Build and start services in production mode
 
-2. Deploy:
-   make deploy-files
+3. Verify deployment:
+   ```bash
+   make check-deployment
+   ```
 
-## Configuration
-- Environment: .env file
-- Elasticsearch: docker-compose.yml
-- API: api/config.py
-- Frontend: frontend/.env
+### Production Configuration
+- Uses `docker-compose.production.yml`
+- SSL certificates managed by Let's Encrypt
+- Environment variables in `.env.production`
+- Production-specific Nginx config in `nginx/production.conf`
+
+## Architecture
+
+### Components
+- **Frontend**: Nuxt 3 application with modern UI
+- **Backend**: FastAPI serving the API
+- **Search**: Elasticsearch OSS for document indexing and search
+- **Nginx**: Reverse proxy handling SSL and routing
+
+### API Endpoints
+- `POST /api/search` - Search documents
+- `GET /api/health` - Service health check
+- `GET /api/routes` - List available routes
+- `GET /api/index-stats` - Elasticsearch index statistics
 
 ## Troubleshooting
 
-Common issues:
-- Port conflicts: Check if 3000, 8000, or 9200 are in use
-- Memory errors: Increase Docker memory limit
-- Elasticsearch fails: Check vm.max_map_count setting, check if index exists
+### Common Issues
+1. **Elasticsearch fails to start**
+   - Check system limits: `sysctl -w vm.max_map_count=262144`
+   - Verify Docker memory settings
+
+2. **SSL certificate issues**
+   - Run `make check-deployment` to verify certificate status
+   - Check Nginx logs for certificate errors
+
+3. **API connection issues**
+   - Verify Elasticsearch is running and healthy
+   - Check API logs with `make logs`
+
+### Useful Commands
+```bash
+# Check deployment status
+make check-deployment
+
+# View service logs
+make logs
+
+# Restart EC2 instance
+make force-restart-instance
+
+# Debug SSH connection
+make debug-ssh
+```
 
 ## Security
-- API uses CORS protection
-- Elasticsearch security enabled
-- Regular dependency updates
-- Secure deployment practices
+- HTTPS enforced in production
+- API endpoints properly secured
+- Regular security updates
+- Environment-specific configurations
+- Proper CORS settings
+
+## Contributing
+1. Create a feature branch
+2. Make changes
+3. Test locally with `make rebuild`
+4. Submit a pull request
+
+## License
+Copyright © 2024 Data for Black Lives

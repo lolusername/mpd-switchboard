@@ -1,310 +1,239 @@
-# Switchboard: Document Analysis Platform
+# Switchboard: Email Document Analysis Platform
 
-A comprehensive platform for analyzing document collections through advanced text processing, network analysis, and interactive visualizations. Built by Miski Studio to help researchers, journalists, and community members understand complex document collections.
-
-# Switchboard: Document Analysis Platform
+A specialized platform for analyzing large collections of email documents, built for Data for Black Lives (D4BL). Switchboard makes email archives searchable and analyzable through advanced text processing and a modern web interface.
 
 ## Quick Access
-- **Live Demo**: https://switchboard.miski.studio/
-- **Default Login**: 
-  - Username: admin
-  - Password: admin123
+- **Production Site**: https://switchboard.miski.studio/
+- **Local Development**: http://localhost
 
-## Using the Platform
+## Core Features
 
-### Home Page Features
-1. **Dashboard Overview**
-   - Email Communications Stats
-     - Total emails processed
-     - Breakdown of internal (DC.gov) vs external communications
-   - Media Communications Stats
-     - Total media outlet emails
-     - Top media outlet statistics
-     - Active media outlets count
+### 1. Document Processing & Ingestion
+- **Email PDF Processing**
+  - Handles large collections of email PDFs
+  - Automatic OCR for scanned documents
+  - Extracts text content while preserving email structure
+  - Processes metadata (From, To, Subject, Date)
+  - Supports batch ingestion via S3 or local files
 
-2. **Interactive Visualizations**
-   - Entity Relationship Network: Shows connections between different entities
-   - Email Domain Communication Flow: Heat map showing communication patterns
-   - Email Domain Distribution: Bar chart of email domain frequencies
-   - Hidden Debug Visualizations (Press Shift + D):
-     - Topic UMAP Analysis
-     - Topic t-SNE Analysis
-     - Topic Similarity Network
+- **OCR Capabilities**
+  - Automatic detection of scanned PDFs
+  - OCR processing using Tesseract
+  - Handles both text and scanned PDFs in the same collection
+  - Preserves document structure during OCR
+  - Pre-processes images for better OCR accuracy
 
-### Search Interface
-1. **Basic Search**
-   - Enter search terms (minimum 3 characters)
-   - Results show highlighted matches in context
-   - Navigate through pages of results
-   - Each result shows:
-     - Document title
-     - Relevant excerpts with highlighted matches
-     - Relevance score
-
-2. **Document Management**
-   - Pin important documents for quick access
-     - Click the pin icon to save documents
-     - Pinned documents appear in a bar at the top
-     - Click pinned documents to quickly access them
-   - View full document content by clicking any result
-   - Add annotations to documents
-     - Use the notes field at the bottom of document view
-     - Notes are automatically saved
-
-3. **Search Tips**
-   - Use specific terms for better results
-   - Results are sorted by relevance
-   - Hover over highlighted text to see context
-   - Use the sidebar for quick navigation between features
-
-### Navigation
-- Use the sidebar to switch between dashboard and search
-- Logout button located at the bottom of the dashboard
-
-
-## Project Structure
-switchboard/
-├── app/                    # Main application
-│   ├── api/               # FastAPI backend
-│   ├── frontend/          # Nuxt.js frontend
-│   ├── elasticsearch-init/ # Search initialization
-│   └── docker-compose.yml # Container configuration
-├── pre-processing/        # Document preparation tools
-│   ├── scripts/          # Processing scripts
-│   └── Makefile          # Processing automation
-├── data/                  # Document storage
-│   ├── raw/              # Original documents
-│   ├── processed/        # OCR'd documents
-│   └── redacted/         # Redacted documents
-└── reports/              # Analysis outputs
-    ├── meta_data.json    # Document metadata
-    ├── email_analysis/   # Communication patterns
-    └── sensitive_data_log.txt # Redaction records
-
-## Key Features
-
-- 📄 Advanced Document Processing
-  - Automated OCR and text extraction
-  - Multi-format document support
-  - Batch processing with progress tracking
-  - Memory-efficient handling of large documents
-
-- 🔍 Intelligent Search & Analysis
+### 2. Search & Analysis
+- **Semantic Search**
   - Full-text search across all documents
-  - Entity recognition and relationship mapping
-  - Advanced topic modeling with BERTopic
-  - Communication pattern analysis
+  - Relevance-based result ranking
+  - Highlighted text matches in context
+  - Real-time search as you type
 
-- 🔒 Privacy & Security
-  - Automatic PII detection and redaction
-  - Role-based access controls
-  - Audit logging
-  - GDPR-compliant data handling
+- **Document Management**
+  - Pin important documents for quick access
+  - Add annotations to documents
+  - Track document relevance scores
+  - View full document content with formatted email headers
 
-- 📊 Interactive Visualizations
-  - Entity relationship networks
-  - Communication pattern analysis
-  - Topic clustering and evolution
-  - Domain interaction heatmaps
+### 3. User Interface
+- **Modern Web Interface**
+  - Clean, intuitive search interface
+  - Document preview with highlights
+  - Pinned documents bar for quick access
+  - Annotation system for notes and comments
 
-## Tech Stack
+## Technical Architecture
 
-### Backend
-- Python 3.12+
-- FastAPI
-- Elasticsearch 8.12.2
-- SpaCy & BERTopic for NLP
+### Components
+1. **Backend (Python/FastAPI)**
+   - FastAPI for API endpoints
+   - Elasticsearch client for search
+   - JWT-based authentication
+   - Environment-based configuration
+   - OCR processing pipeline
 
-### Frontend
-- Nuxt.js
-- D3.js for visualizations
-- TailwindCSS
-- TypeScript
+2. **Search Engine**
+   - Elasticsearch OSS 7.10.2
+   - Custom mapping for email documents
+   - Optimized for text search
+   - Configurable relevance scoring
 
-### Processing Pipeline
-- Tesseract OCR
-- pdfminer-six
-- BERT-based models
-- Custom NER models
+3. **Frontend (Nuxt 3/Vue.js)**
+   - Modern reactive interface
+   - Real-time search updates
+   - Document state management
+   - Mobile-responsive design
 
-## Quick Start
+4. **Infrastructure**
+   - Docker containerization
+   - Nginx reverse proxy
+   - Let's Encrypt SSL (production)
+   - AWS EC2 hosting
 
-1. Start services:
+## Getting Started
+
+### Prerequisites
+- Docker & Docker Compose
+- Make
+- At least 4GB RAM (8GB recommended for OCR processing)
+- Sufficient disk space for document storage
+
+### System Dependencies
+All dependencies are handled by Docker, including:
+- Tesseract OCR engine
+- PDF processing libraries
+- Python OCR dependencies
+- Image processing tools
+
+### Local Development
+1. Clone the repository:
    ```bash
-   make up
+   git clone https://github.com/d4bl/switchboard.git
+   cd switchboard/app
    ```
 
-2. Access:
-   - Frontend: http://localhost:3000
-   - API Docs: http://localhost:8000/docs
-   - Elasticsearch: http://localhost:9200
+2. Start development environment:
+   ```bash
+   make rebuild
+   ```
+
+3. Access the application:
+   - Web Interface: http://localhost
+   - API: http://localhost/api
+   - API Docs: http://localhost/api/docs
+
+### Production Deployment
+1. Configure AWS and domain:
+   - Point domain to EC2 instance
+   - Configure SSL certificates
+   - Set up security groups
+
+2. Deploy:
+   ```bash
+   make deploy
+   ```
+
+3. Verify deployment:
+   ```bash
+   make check-deployment
+   ```
 
 ## Document Processing Pipeline
 
-1. Document Standardization
-   - Converts various PDF formats
-   - Normalizes text content
-   - Handles batch processing
+### 1. Data Preparation
+- Place email PDFs in data directory
+- Organize by collection if needed
+- Ensure consistent file naming
+- No need to separate scanned and digital PDFs
 
-2. OCR Processing
-   - Detects and processes non-searchable PDFs
-   - Multi-language support
-   - Progress tracking
+### 2. Document Processing
+- **Text Extraction**
+  - Automatic detection of PDF type (scanned vs digital)
+  - Direct text extraction for digital PDFs
+  - OCR processing for scanned documents
+  - Preservation of email structure and formatting
 
-3. Automated Redaction
-   - NER for sensitive data
-   - Pattern matching for PII
-   - Verification through dry-runs
+- **OCR Pipeline**
+  - Image preprocessing for better quality
+  - Tesseract OCR for text extraction
+  - Post-processing to maintain email format
+  - Quality checks on OCR output
 
-4. Network Analysis
-   - Maps communication patterns
-   - Identifies key relationships
-   - Generates visualizations
+### 3. Ingestion Process
+- **Local Ingestion**
+  ```bash
+  make ingest
+  ```
+- **S3 Ingestion**
+  - Configure AWS credentials
+  - Set S3 bucket in configuration
+  - Run ingestion command
 
-## System Requirements
+### 4. Search Index Creation
+- Automatic index creation
+- Custom mappings for email fields
+- Optimized for search performance
+- Full-text indexing of OCR'd content
 
-### Hardware Recommendations
-- CPU: 4+ cores for OCR
-- RAM: 16GB+ recommended
-- Storage: 3x input data size
-- SSD recommended
+## Configuration
 
-### Software Dependencies
-- Docker & Docker Compose
-- Tesseract 4.0+
-- Elasticsearch 8.12.2
-- Python 3.12+
+### Development
+- `docker-compose.yml` - Development setup
+- `nginx/development.conf` - Development server
+- `.env.development` - Development variables
+
+### Production
+- `docker-compose.production.yml` - Production setup
+- `nginx/production.conf` - Production server with SSL
+- `.env.production` - Production variables
+
+## Common Tasks
+
+### Managing Documents
+1. **Adding New Documents**
+   - Add PDFs to data directory
+   - Run ingestion process
+   - Verify in search interface
+
+2. **Updating Existing Documents**
+   - Replace PDFs in data directory
+   - Re-run ingestion for updates
+   - Check index statistics
+
+### System Maintenance
+1. **Checking System Status**
+   ```bash
+   make check-deployment  # Production
+   make check-rebuild    # Development
+   ```
+
+2. **Viewing Logs**
+   ```bash
+   make logs
+   ```
+
+3. **Restarting Services**
+   ```bash
+   make rebuild  # Development
+   make deploy   # Production
+   ```
+
+## Troubleshooting
+
+### Common Issues
+1. **Search Not Working**
+   - Check Elasticsearch status
+   - Verify index exists
+   - Check API connectivity
+
+2. **OCR Issues**
+   - Verify Tesseract installation in container
+   - Check PDF quality and resolution
+   - Monitor OCR processing logs
+   - Try reprocessing problematic documents
+   - Check container memory limits
+
+3. **Deployment Issues**
+   - Verify AWS credentials
+   - Check SSL certificates
+   - Review nginx logs
+
+4. **Performance Issues**
+   - Monitor Elasticsearch memory
+   - Check system resources
+   - Review request logs
+   - Adjust OCR batch size if needed
 
 ## Contributing
-
-We welcome contributions! Key areas:
-- Improved entity recognition
-- Additional visualizations
-- Performance optimizations
-- Documentation improvements
+1. Fork the repository
+2. Create a feature branch
+3. Make changes
+4. Test locally with `make rebuild`
+5. Submit a pull request
 
 ## License
-Developed by Miski Studio / Atilio Barreda II
+Copyright © 2024 Data for Black Lives
 
-
-
-## Make Commands
-
-### Setup & Installation
-- `make check` - Verifies pyenv and poetry are installed
-- `make setup` - Sets up Python environment using Poetry
-- `make install` - Installs project dependencies
-- `make clean` - Removes virtual environment and temporary files
-
-### Document Analysis
-- `make size-check` - Analyzes PDF document sizes and generates report
-- `make ocr-check` - Identifies which PDFs need OCR processing
-- `make create-df` - Creates DataFrame from PDF documents for analysis
-
-### Processing
-- `make ocr [INPLACE=true]` - Runs OCR on PDFs
-  - Use INPLACE=true to modify files in place
-  - Default: Creates new files in output directory
-  
-- `make redact [MODE=dry-run]` - Handles document redaction
-  - Use MODE=dry-run to test without modifying files
-  - Default: Performs actual redaction
-  - Saves logs to ./reports/sensitive_data_log.txt
-
-### Analysis Tools
-- `make email-analysis [TEST=true]` - Analyzes email communication patterns
-  - Use TEST=true for test run
-  - Outputs network graphs and statistics
-  - Saves results to ./reports/email_analysis/
-
-### Directory Structure
-- Input files go in ./data
-- Processed files saved to ./reports
-- Analysis outputs in ./reports/email_analysis
-- Metadata stored in ./reports/meta_data.json
-
-
-## AWS Deployment Guide
-
-### Prerequisites
-1. AWS Account with EC2 access
-2. A domain name you can configure (for SSL)
-3. SSH key pair for EC2 access
-
-### Step 1: Launch EC2 Instance
-1. Launch a t2.medium Ubuntu instance (Ubuntu 22.04 LTS)
-2. Configure Security Group:
-   - Allow SSH (Port 22) from your IP
-   - Allow HTTP (Port 80) from anywhere
-   - Allow HTTPS (Port 443) from anywhere
-
-### Step 2: Configure Domain & SSL
-1. Add an A record in your domain's DNS settings:
-   ```
-   Type: A
-   Name: switchboard (or your subdomain)
-   Value: Your-EC2-IP
-   TTL: 3600 (or lowest available)
-   ```
-
-### Step 3: Local Setup
-1. Clone this repository
-2. Copy your EC2 key to `~/switchboard-final.pem`
-3. Set correct permissions:
-   ```bash
-   chmod 400 ~/switchboard-final.pem
-   ```
-4. Update the Makefile EC2 configuration:
-   ```makefile
-   EC2_IP = your-ec2-ip
-   EC2_USER = ubuntu
-   EC2_KEY = ~/switchboard-final.pem
-   ```
-
-### Step 4: Initial Deployment
-1. Install Docker on EC2:
-   ```bash
-   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip
-   sudo apt-get update
-   sudo apt-get install -y docker.io docker-compose
-   ```
-
-2. Deploy the application:
-   ```bash
-   make ssl-setup  # Set up SSL certificate
-   make deploy     # Deploy the application
-   ```
-
-### Step 5: Verify Deployment
-1. Check deployment status:
-   ```bash
-   make domain-check
-   ```
-2. Visit your domain (e.g., https://switchboard.yourdomain.com)
-
-### Maintenance Commands
-- `make ssl-status`: Check SSL certificate status
-- `make ssl-renew`: Renew SSL certificate
-- `make deploy`: Redeploy application
-- `make domain-check`: Verify domain and SSL setup
-
-### Troubleshooting
-If deployment fails:
-1. Check container status:
-   ```bash
-   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip "cd /home/ubuntu/switchboard/app && sudo docker-compose ps"
-   ```
-2. View container logs:
-   ```bash
-   ssh -i ~/switchboard-final.pem ubuntu@your-ec2-ip "cd /home/ubuntu/switchboard/app && sudo docker-compose logs"
-   ```
-3. Verify SSL certificate:
-   ```bash
-   make ssl-status
-   ```
-
-### Security Notes
-- The deployment uses Let's Encrypt for SSL certificates
-- Certificates auto-renew every 90 days
-- Always keep your EC2 security group restricted to necessary ports
-- Regularly update dependencies and system packages
+## Acknowledgments
+Built by Miski Studio for Data for Black Lives
