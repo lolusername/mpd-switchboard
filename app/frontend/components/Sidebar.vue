@@ -6,7 +6,7 @@
       <NuxtLink to="/" class="logo-wrapper block mb-3">
         <img 
           src="/logo.png" 
-          alt="D4BL Logo" 
+          alt=" Logo" 
           class="w-full object-contain logo-main"
         />
       </NuxtLink>
@@ -110,7 +110,7 @@
         <NuxtLink to="/" class="logo-wrapper block mb-3">
           <img 
             src="/logo.png" 
-            alt="D4BL Logo" 
+            alt="Logo" 
             class="w-full object-contain logo-main"
           />
         </NuxtLink>

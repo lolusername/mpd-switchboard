@@ -443,9 +443,9 @@ Built by Miski Studio for Data for Black Lives
 </details>
 
 <details>
-<summary>🚀 Frontend Development (2-3 months)</summary>
+<summary>🚀 Frontend Development</summary>
 
-### Vue.js & Nuxt Fundamentals (2-3 weeks)
+### Vue.js & Nuxt Fundamentals 
 ```bash
 # Start with Vue 3 Composition API
 npm create vue@latest my-first-vue-app
@@ -472,7 +472,7 @@ npm run dev
    - Real-time updates
    - Error handling
 
-### State Management & API Integration (2 weeks)
+### State Management & API Integration
 ```typescript
 // Example of composable for API calls
 export function useApi() {
@@ -505,7 +505,7 @@ npx tailwindcss init
 </details>
 
 <details>
-<summary>⚙️ Backend Development (2-3 months)</summary>
+<summary>⚙️ Backend Development </summary>
 
 ### FastAPI Fundamentals (2-3 weeks)
 ```python
@@ -591,19 +591,19 @@ aws route53 list-hosted-zones   # List DNS zones
 <details>
 <summary>🏗️ Practice Projects</summary>
 
-### 1. Simple Search Engine (2 weeks)
+### 1. Simple Search Engine 
 - Frontend search interface
 - Elasticsearch integration
 - Result highlighting
 - Basic filtering
 
-### 2. Document Processor (2 weeks)
+### 2. Document Processor 
 - PDF text extraction
 - OCR implementation
 - Document storage
 - Progress tracking
 
-### 3. Full Stack App (3-4 weeks)
+### 3. Full Stack App 
 - User authentication
 - Document management
 - Search functionality
@@ -623,10 +623,6 @@ aws route53 list-hosted-zones   # List DNS zones
 - TestDriven.io (FastAPI)
 - AWS Certified Developer
 
-### Books
-- "Full Stack FastAPI, React, and MongoDB"
-- "Learning Elasticsearch"
-- "Docker in Practice"
 </details>
 
 <details>
@@ -637,14 +633,6 @@ aws route53 list-hosted-zones   # List DNS zones
 - Use dummy data initially
 - Add features incrementally
 
-### Testing Strategy
-```bash
-# Frontend tests
-npm run test:unit
-
-# Backend tests
-pytest tests/
-```
 
 ### Code Organization
 ```
@@ -665,4 +653,165 @@ project/
 - Use pagination
 - Optimize search queries
 - Monitor resource usage
+</details>
+
+<details>
+<summary>📋 Document Processing Pipeline Overview</summary>
+
+## How Switchboard Processes Your Documents
+
+### 1. Document Collection & Analysis
+- **What It Does**:
+  - Automatically analyzes each email PDF
+  - Determines if it's a regular PDF or scanned document
+  - Preserves email headers (From, To, Subject, Date)
+  - Maintains original document structure
+
+- **Why It Matters**:
+  - No manual sorting needed
+  - Handles mixed collections of documents
+  - Preserves important metadata
+  - Saves hours of manual processing
+
+### 2. Intelligent Text Extraction
+- **For Digital PDFs**:
+  - Direct text extraction
+  - Maintains formatting
+  - Preserves links and attachments
+  - Fast processing
+
+- **For Scanned Documents**:
+  - Advanced OCR (Optical Character Recognition)
+  - Image enhancement for better results
+  - Handles poor quality scans
+  - Supports multiple languages
+
+### 3. Data Enhancement
+- **Email Structure Preservation**:
+  - Automatically identifies email parts
+  - Extracts sender/recipient information
+  - Preserves date and time data
+  - Maintains conversation threads
+
+- **Content Organization**:
+  - Automatic categorization
+  - Key information extraction
+  - Relationship mapping
+  - Topic identification
+
+### 4. Search Optimization
+- **What We Index**:
+  - Full email content
+  - Sender/recipient information
+  - Dates and timestamps
+  - Attachments and references
+
+- **Search Capabilities**:
+  - Natural language search
+  - Exact phrase matching
+  - Date range filtering
+  - Sender/recipient filtering
+
+### 5. Storage & Security
+- **Data Protection**:
+  - Secure document storage
+  - Access control
+  - Audit logging
+  - Regular backups
+
+- **Compliance Features**:
+  - Data encryption
+  - Access tracking
+  - Retention policies
+  - Export capabilities
+
+</details>
+
+<details>
+<summary>💡 Benefits for Nonprofits</summary>
+
+## Why Switchboard Makes Sense for Your Organization
+
+### 1. Time & Resource Savings
+- **Automated Processing**
+  - Reduces manual data entry by 90%
+  - Processes thousands of documents automatically
+  - Frees up staff for important work
+  - Reduces processing errors
+
+- **Quick Implementation**
+  - Ready to use in days, not months
+  - Minimal training required
+  - Works with existing documents
+  - Scalable as needs grow
+
+### 2. Enhanced Accessibility
+- **Better Document Access**
+  - Find any document in seconds
+  - Full text search capability
+  - Mobile-friendly interface
+  - Remote access support
+
+- **Improved Collaboration**
+  - Share documents easily
+  - Add notes and annotations
+  - Track important findings
+  - Team-based organization
+
+### 3. Cost Effectiveness
+- **Resource Optimization**
+  - Reduced storage costs
+  - Lower processing overhead
+  - Minimal IT requirements
+  - Scalable pricing
+
+- **Long-term Benefits**
+  - Improved productivity
+  - Better data organization
+  - Enhanced decision making
+  - Sustainable growth
+
+### 4. Real-World Applications
+- **Common Use Cases**
+  - Historical email archives
+  - Document digitization
+  - Research projects
+  - Compliance requirements
+
+- **Success Stories**
+  - [Case study examples can be added here]
+  - [Testimonials can be added here]
+  - [Impact metrics can be added here]
+
+</details>
+
+<details>
+<summary>📊 Implementation & Support</summary>
+
+## Getting Started with Switchboard
+
+### 1. Initial Setup
+- Assessment of your needs
+- Document inventory
+- System configuration
+- Team training
+
+### 2. Migration Process
+- Staged implementation
+- Data validation
+- Quality assurance
+- Performance tuning
+
+### 3. Ongoing Support
+- Technical assistance
+- Regular updates
+- Performance monitoring
+- Training resources
+
+### 4. Success Metrics
+- Document processing speed
+- Search accuracy
+- User adoption
+- Time savings
+
 </details>
