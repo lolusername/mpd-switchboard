@@ -195,7 +195,7 @@
   
     isLoading.value = true
     try {
-      const response = await $fetch(`${config.public.apiBase}/search`, {
+      const response = await $fetch(`${config.public.apiBase}/api/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

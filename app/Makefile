@@ -96,9 +96,9 @@ deploy:
 	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\
 		cd /home/ubuntu/switchboard/app && \
 		if [ ! -f .env ]; then cp .env.production .env; fi && \
-		NODE_ENV=production sudo -E docker-compose down && \
-		NODE_ENV=production sudo -E docker-compose build --no-cache && \
-		NODE_ENV=production sudo -E docker-compose up -d --force-recreate"
+		NODE_ENV=production sudo -E docker-compose --env-file .env.production down && \
+		NODE_ENV=production sudo -E docker-compose --env-file .env.production build --no-cache && \
+		NODE_ENV=production sudo -E docker-compose --env-file .env.production up -d --force-recreate"
 	@echo "🔍 Verifying deployment..."
 	@sleep 10
 	ssh -i $(EC2_KEY) ubuntu@$(EC2_IP) "\

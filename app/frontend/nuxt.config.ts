@@ -16,8 +16,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: process.env.NODE_ENV === 'production' 
-        ? 'https://52.23.77.209/api'
-        : 'http://localhost:3000'
+        ? 'https://switchboard.miski.studio/api'
+        : 'http://localhost:3000/api'
     }
   },
   modules: [],  // Remove auth module for now

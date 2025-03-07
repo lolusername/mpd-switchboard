@@ -5,7 +5,7 @@ from elasticsearch import Elasticsearch, helpers
 from pydantic import BaseModel
 import os
 from urllib.parse import unquote
-from typing import List
+from typing import List, Optional
 import time
 from fastapi.security import OAuth2PasswordRequestForm
 import auth
@@ -24,7 +24,8 @@ app.add_middleware(
         "http://localhost:80",
         "http://52.23.77.209",
         "http://52.23.77.209:3000",
-        "http://52.23.77.209:8000"
+        "http://52.23.77.209:8000",
+        "https://switchboard.miski.studio"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,7 +40,7 @@ async def catch_exceptions(request: Request, call_next):
     except Exception as e:
         print(f"Error caught in middleware: {str(e)}")
         return JSONResponse(
-            status_code=500,  # Return 200 even for errors to avoid CORS issues
+            status_code=500,
             content={"error": str(e)}
         )
 
@@ -119,11 +120,11 @@ users_db = {
     }
 }
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"message": "Welcome to the PDF Search API"}
 
-@app.get("/api")
+@app.get("/api/routes")
 async def list_routes():
     routes = []
     for route in app.routes:
@@ -134,8 +135,9 @@ async def list_routes():
         })
     return {"routes": routes}
 
-@app.post("/search")
-async def search_pdfs(search_query: SearchQuery):
+@app.post("/api/search")
+async def search_pdfs(search_query: SearchQuery, current_user: Optional[str] = Depends(auth.get_current_user)):
+    # No authentication required for search
     if not es:
         raise HTTPException(
             status_code=503,
@@ -286,7 +288,7 @@ async def search_pdfs(search_query: SearchQuery):
             detail=f"Search error: {str(e)}"
         )
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     if not es:
         raise HTTPException(
@@ -305,7 +307,7 @@ async def health_check():
             detail=f"Elasticsearch health check failed: {str(e)}"
         )
 
-@app.get("/pdf/{file_path:path}")
+@app.get("/api/pdf/{file_path:path}")
 async def get_pdf(file_path: str):
     # Decode the URL-encoded file path
     decoded_path = unquote(file_path)
@@ -319,7 +321,7 @@ async def get_pdf(file_path: str):
         raise HTTPException(status_code=404, detail=f"PDF file not found: {decoded_path}")
 
 # Update the check_pdf_directory function to show nested structure
-@app.get("/check-pdf-directory")
+@app.get("/api/check-pdf-directory")
 async def check_pdf_directory():
     if os.path.isdir(PDF_DIRECTORY):
         pdf_files = []
@@ -337,7 +339,7 @@ async def check_pdf_directory():
     else:
         return {"status": "Directory not found", "path": PDF_DIRECTORY}
 
-@app.get("/index-stats")
+@app.get("/api/index-stats")
 async def get_index_stats():
     try:
         stats = es.indices.stats(index="pdf_documents")
@@ -373,23 +375,13 @@ async def bulk_index(request: Request):
             content={"error": str(e)}
         )
 
-# Optional: Add route listing for debugging
-@app.get("/api/routes")
-async def list_routes():
-    return {
-        "routes": [
-            {"path": route.path, "methods": route.methods}
-            for route in app.routes
-        ]
-    }
-
-@app.post("/token")
+@app.post("/api/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = users_db.get(form_data.username)
     if not user or not auth.verify_password(form_data.password, user["password"]):
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            content={"detail": "Incorrect username or password"},
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -399,7 +391,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Protected route example
-@app.get("/protected")
+@app.get("/api/protected")
 async def protected_route(current_user: str = Depends(auth.get_current_user)):
-    return {"message": "You are authenticated", "user": current_user}
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    return {"message": f"Hello {current_user}"}
